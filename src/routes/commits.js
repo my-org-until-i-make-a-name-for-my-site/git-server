@@ -144,9 +144,67 @@ router.post('/:owner/:repo/branches', authenticateToken, async (req, res) => {
 });
 
 // Get file tree
-router.get('/:owner/:repo/tree/:branch/*', async (req, res) => {
+router.get('/:owner/:repo/tree/:branch', async (req, res) => {
   const { owner, repo, branch } = req.params;
-  const filepath = req.params[0] || '';
+  const filepath = '';
+
+  db.get(
+    `SELECT r.* FROM repositories r
+     LEFT JOIN users u ON r.owner_id = u.id AND r.owner_type = 'user'
+     LEFT JOIN organizations o ON r.owner_id = o.id AND r.owner_type = 'org'
+     WHERE r.name = ? AND (u.username = ? OR o.name = ?)`,
+    [repo, owner, owner],
+    async (err, repository) => {
+      if (err || !repository) {
+        return res.status(404).json({ error: 'Repository not found' });
+      }
+
+      try {
+        const fullPath = path.join(repository.path, filepath);
+        
+        if (!fs.existsSync(fullPath)) {
+          return res.status(404).json({ error: 'Path not found' });
+        }
+
+        const stats = fs.statSync(fullPath);
+        
+        if (stats.isDirectory()) {
+          const files = fs.readdirSync(fullPath);
+          const tree = files
+            .filter(f => !f.startsWith('.git'))
+            .map(file => {
+              const filePath = path.join(fullPath, file);
+              const fileStats = fs.statSync(filePath);
+              return {
+                name: file,
+                path: path.join(filepath, file),
+                type: fileStats.isDirectory() ? 'tree' : 'blob',
+                size: fileStats.size
+              };
+            });
+          
+          res.json({ tree });
+        } else {
+          // Return file content
+          const content = fs.readFileSync(fullPath, 'utf8');
+          res.json({ 
+            type: 'blob', 
+            content,
+            size: stats.size,
+            path: filepath
+          });
+        }
+      } catch (error) {
+        console.error('Error reading tree:', error);
+        res.status(500).json({ error: 'Failed to read repository tree' });
+      }
+    }
+  );
+});
+
+// Get file tree with path
+router.get('/:owner/:repo/tree/:branch/:filepath', async (req, res) => {
+  const { owner, repo, branch, filepath } = req.params;
 
   db.get(
     `SELECT r.* FROM repositories r
@@ -203,9 +261,8 @@ router.get('/:owner/:repo/tree/:branch/*', async (req, res) => {
 });
 
 // Get file content
-router.get('/:owner/:repo/contents/:branch/*', async (req, res) => {
-  const { owner, repo, branch } = req.params;
-  const filepath = req.params[0];
+router.get('/:owner/:repo/contents/:branch/:filepath', async (req, res) => {
+  const { owner, repo, branch, filepath } = req.params;
 
   db.get(
     `SELECT r.* FROM repositories r

@@ -6,28 +6,36 @@ const REDIS_CONFIG = {
   host: process.env.REDIS_HOST || 'localhost',
   port: process.env.REDIS_PORT || 6379,
   password: process.env.REDIS_PASSWORD || undefined,
-  retryStrategy: (times) => {
-    return null; // Disable retry to fall back to in-memory
-  }
+  enableOfflineQueue: false,
+  maxRetriesPerRequest: 0,
+  retryStrategy: () => null // Disable retry to fall back to in-memory
 };
 
 // Try to use Redis, fall back to in-memory if not available
-let taskQueue;
-let useRedis = true;
+let taskQueue = null;
+let useRedis = false;
 
-try {
-  taskQueue = new Queue('tasks', { redis: REDIS_CONFIG });
-  
-  taskQueue.on('error', (error) => {
-    if (error.code === 'ECONNREFUSED') {
-      console.warn('Redis not available, using in-memory task queue');
+// Only try Redis if explicitly enabled
+if (process.env.USE_REDIS === 'true') {
+  try {
+    taskQueue = new Queue('tasks', { redis: REDIS_CONFIG });
+    
+    taskQueue.on('ready', () => {
+      useRedis = true;
+      console.log('Redis connected for task queue');
+    });
+    
+    taskQueue.on('error', (error) => {
+      console.warn('Redis error, using in-memory task queue:', error.message);
       useRedis = false;
-    }
-  });
-} catch (error) {
-  console.warn('Redis not available, using in-memory task queue');
-  useRedis = false;
-  taskQueue = null;
+    });
+  } catch (error) {
+    console.warn('Redis not available, using in-memory task queue');
+    useRedis = false;
+    taskQueue = null;
+  }
+} else {
+  console.log('Using in-memory task queue (set USE_REDIS=true to enable Redis)');
 }
 
 class TaskManager {

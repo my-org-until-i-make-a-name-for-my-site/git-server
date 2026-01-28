@@ -141,7 +141,13 @@ app.get('/api/config', (req, res) => {
 app.use('/git', gitRoutes);
 
 // Serve frontend for all other routes (React Router)
-app.get('*', (req, res) => {
+// Use a more specific catch-all that works with Express
+app.use((req, res, next) => {
+  // Skip if it's an API or git route
+  if (req.path.startsWith('/api') || req.path.startsWith('/git')) {
+    return next();
+  }
+  
   const indexPath = require('fs').existsSync(distPath) 
     ? path.join(distPath, 'index.html')
     : path.join(__dirname, '../public/index.html');
