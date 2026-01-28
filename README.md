@@ -1,109 +1,241 @@
-# Git Platform
+# Codara - Self-Hosted Git Platform
 
-A scalable, self-hosted Git platform built with Node.js that provides repository hosting, organization management, and integrated code editing capabilities.
+A comprehensive, scalable, self-hosted Git platform built entirely in JavaScript. Codara provides a complete development environment with repository hosting, CI/CD pipelines, real-time collaboration, and distributed cluster execution.
 
-## Features
+![Codara Logo](https://github.com/user-attachments/assets/0c2a2bb8-8159-4eeb-955d-7d2f10c3ecfc)
 
-- 🔐 **User Authentication**: Secure registration and login system with JWT tokens
-- 👥 **Organizations**: Create and manage organizations with multiple members
-- 📦 **Git Repositories**: Full Git functionality with high compression for minimal storage
-- 🌐 **Git Clone Support**: Native git clone/push/pull via HTTP
-- 💻 **VSCode Web Editor**: Integrated VSCode editor for code editing
-- 🤖 **Command Execution Agent**: Execute workflows and terminal commands (admin only)
-- 🔑 **Admin System**: First user automatically becomes admin
-- 🗃️ **SQLite Database**: Lightweight and portable database
+## 🌟 Key Features
 
-## Installation
+### 🎨 Modern User Interface
+- **React-based Frontend**: Built with Vite for lightning-fast development
+- **Dark/Light Themes**: Toggle between themes with persistent preference
+- **Responsive Design**: Works seamlessly on desktop and mobile
+- **Beautiful UI**: GitHub-inspired modern interface
 
-1. Clone this repository:
+### 🔐 User Management
+- **Authentication**: Secure JWT-based auth with configurable password hashing (bcrypt/argon2)
+- **Role System**: Admin, Moderator, and User roles
+- **First User = Admin**: Automatic admin privileges for initial user
+- **User Profiles**: Follow system with followers/following
+- **Organizations**: Create and manage organizations with team collaboration
+
+### 📦 Git Repository Hosting
+- **Full Git Support**: Clone, push, pull via HTTP
+- **High Compression**: Maximum compression (level 9) for minimal storage
+- **Issues & Pull Requests**: Complete issue tracking and PR system
+- **Branches**: Create and manage branches
+- **Commit History**: Full git log integration
+- **Contributors**: Track contributions from git log
+- **Collaborators**: Add team members with permissions (read/write)
+
+### 💻 Integrated Code Editor
+- **VSCode Web**: Full VSCode editor embedded in browser
+- **Isolated Instances**: Each project has its own editor instance
+- **Real-time Collaboration**: Live editing with cursor tracking (when contributors are online)
+- **File Browser**: Navigate folders and files with syntax highlighting
+- **Line Numbers**: Professional code viewing
+- **Edit & Commit**: Edit files and commit back to repository
+
+### 🚀 CI/CD Pipeline System
+- **Job-based Execution**: Jobs stored in `Z:/mnt/runners/jobs/{job_id}/`
+- **Live Log Streaming**: Real-time logs from clusters via WebSocket
+- **Artifact Collection**: Automatic build artifact archiving
+- **Dependency Installation**: Auto-install npm, pip, bundle dependencies
+- **Stage-based Pipelines**: Configure multi-stage pipelines
+
+### 🖥️ Distributed Cluster System
+- **Auto-Discovery**: UDP broadcast + full network IP scanning
+- **High/Low Power Classification**: 16GB+ memory = high power
+- **Permission-based Access**: User/org require explicit permission for high power clusters
+- **Load Balancing**: Resource-based task scheduling
+- **Failover & Redundancy**: Auto-reschedule on cluster failure
+- **Shared Storage**: All data on `Z:/mnt/` (configurable)
+
+### 🔍 Search & Discovery
+- **Global Search**: Search repositories, organizations, and users
+- **Filter Tabs**: All, Repos, Orgs, Users
+- **Explore Page**: Trending and recently created repositories
+- **Real-time**: Debounced search with instant results
+
+### 🔔 Notifications
+- **Real-time Updates**: WebSocket-based notifications
+- **Notification Types**: Follows, issues, PRs, mentions, comments
+- **Mark as Read**: Individual and bulk actions
+- **Badge Count**: Unread notification counter
+
+### 🛠️ Admin Panel
+- **User Management**: Promote/demote users to admin/moderator
+- **Repository Overview**: View all repositories
+- **Organization Management**: View all organizations
+- **Platform Statistics**: Users, repos, orgs, active clusters
+- **Search**: Integrated search in each tab
+
+## 📸 Screenshots
+
+### Login Page
+![Login](https://github.com/user-attachments/assets/0c2a2bb8-8159-4eeb-955d-7d2f10c3ecfc)
+
+### Signup Page
+![Signup](https://github.com/user-attachments/assets/f0cf415a-221c-4244-ba59-6db1672510ed)
+
+### Dashboard (Dark Theme)
+![Dashboard Dark](https://github.com/user-attachments/assets/f331e982-0fa5-4b4f-8f9c-25874d104df8)
+
+### Dashboard (Light Theme)
+![Dashboard Light](https://github.com/user-attachments/assets/9d2b269c-13b0-4ebd-8128-c719db8d1666)
+
+### Admin Panel
+![Admin Panel](https://github.com/user-attachments/assets/10b65526-4169-41d0-94b4-98841057d894)
+
+### Search Page
+![Search](https://github.com/user-attachments/assets/533da9aa-9cc2-485f-90d2-58160c0af0c4)
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
+
+### Installation
+
+1. **Clone the repository**
 ```bash
-git clone <repository-url>
-cd git-server
+git clone https://github.com/your-org/codara.git
+cd codara
 ```
 
-2. Install dependencies:
+2. **Install server dependencies**
 ```bash
 npm install
 ```
 
-3. Configure environment (copy .env.example to .env and modify as needed):
+3. **Install client dependencies and build**
 ```bash
-cp .env.example .env
+cd client
+npm install
+npm run build
+cd ..
 ```
 
-4. Start the server:
+4. **Configure environment**
+```bash
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+5. **Start the server**
 ```bash
 npm start
 ```
 
-The server will run on `http://localhost:3000` by default.
+The platform will be available at `http://localhost:3000`
 
-## Configuration
+## ⚙️ Configuration
 
-Edit the `.env` file to configure:
+### Environment Variables (`.env`)
 
-- `PORT`: Server port (default: 3000)
-- `JWT_SECRET`: Secret key for JWT tokens (change in production!)
-- `REPOS_BASE_PATH`: Base path for storing repositories (default: /mnt/repos)
-- `DATABASE_PATH`: SQLite database file path (default: ./data/database.sqlite)
+```env
+# Server
+PORT=3000
+NODE_ENV=production
 
-## Usage
+# Security
+JWT_SECRET=your-secret-key-change-this
+PASSWORD_HASH_TYPE=bcrypt  # or argon2
 
-### First User Setup
+# Database (SQLite or PostgreSQL)
+DATABASE_TYPE=sqlite
+DATABASE_PATH=./data/database.sqlite
 
-The first user to register will automatically become an admin with additional privileges:
-- Access to the command execution agent
-- System management capabilities
+# Storage (use Z:/mnt/ for network storage in production)
+REPOS_BASE_PATH=./repos
+JOBS_BASE_PATH=./mnt/runners/jobs
 
-### Creating Repositories
+# Clusters
+ENABLE_CLUSTER_DISCOVERY=true
+CLUSTER_DISCOVERY_PORT=4001
+CLUSTER_SECRET=your-cluster-secret
 
-1. Log in to the web interface
-2. Navigate to the "Repositories" tab
-3. Click "+ Create Repository"
-4. Choose between personal or organization repository
-5. Fill in repository details
+# Redis (optional, for task queue)
+USE_REDIS=false
+REDIS_HOST=localhost
+REDIS_PORT=6379
 
-Repositories are stored at: `/mnt/repos/{owner}/{repo-name}`
-
-### Git Clone
-
-Once a repository is created, you can clone it using standard git:
-
-```bash
-git clone http://localhost:3000/git/{owner}/{repo-name}
+# VSCode Editor
+ENABLE_WEB_EDITOR=true
+DISABLE_TERMINAL=true
 ```
 
-### Organizations
+### Configuration File (`Z:/mnt/app.ini` or `./config/app.ini`)
 
-1. Navigate to the "Organizations" tab
-2. Click "+ Create Organization"
-3. Add members and manage permissions
+```ini
+[general]
+app_name = Codara
+version = 1.0.0
 
-### Code Editor
+[admin]
+initial_admin_email = admin@localhost
+allow_user_registration = true
 
-The integrated VSCode Web editor allows you to edit code directly in the browser:
-- Navigate to the "Code Editor" tab
-- Open your repository files
-- Edit and save changes
+[security]
+password_hash_type = bcrypt
+jwt_secret = your-secret
 
-### Command Execution Agent (Admin Only)
+[storage]
+repos_base_path = Z:/mnt/repos
+jobs_base_path = Z:/mnt/runners/jobs
 
-Admins can execute commands and workflows:
-1. Navigate to the "Agent" tab
-2. Select a command (git, npm, node, etc.)
-3. Provide arguments and working directory
-4. Execute and view results
+[clusters]
+enable_discovery = true
+cluster_secret = your-cluster-secret
 
-## Repository Compression
+[editor]
+enable_web_editor = true
+disable_terminal = true
 
-Repositories are configured with maximum compression to minimize storage:
-- Core compression: 9
-- Loose compression: 9
-- Pack compression: 9
+[features]
+enable_issues = true
+enable_pull_requests = true
+enable_cicd = true
 
-This ensures minimal disk space usage while maintaining full git functionality.
+[limits]
+max_repo_size_gb = 10
+max_file_size_mb = 100
+```
 
-## API Endpoints
+## 🏗️ Architecture
+
+```
+Codara Platform
+├── Frontend (React + Vite)
+│   ├── Authentication pages
+│   ├── Dashboard
+│   ├── Repository browser
+│   ├── File browser with VSCode
+│   ├── Admin panel
+│   ├── Search & Explore
+│   └── User profiles
+│
+├── Backend (Node.js + Express)
+│   ├── REST API
+│   ├── Git HTTP server
+│   ├── WebSocket (collaboration, logs)
+│   ├── Authentication & Authorization
+│   └── Database (SQLite/PostgreSQL)
+│
+├── Cluster System
+│   ├── Cluster agent (cluster/ directory)
+│   ├── Auto-discovery service
+│   ├── Task scheduler
+│   └── Job executor
+│
+└── Shared Storage (Z:/mnt/)
+    ├── repos/{user}/{repo}/
+    ├── runners/jobs/{job_id}/
+    └── artifacts/
+```
+
+## 📡 API Endpoints
 
 ### Authentication
 - `POST /api/auth/register` - Register new user
@@ -112,66 +244,201 @@ This ensures minimal disk space usage while maintaining full git functionality.
 
 ### Repositories
 - `POST /api/repositories` - Create repository
-- `GET /api/repositories` - List user's repositories
-- `GET /api/repositories/:owner/:repo` - Get repository details
-- `GET /api/repositories/:owner/:repo/files` - List repository files
+- `GET /api/repositories` - List repositories
+- `GET /api/repositories/:owner/:repo` - Get repository
+- `GET /api/:owner/:repo/tree/:branch` - Browse files
+- `GET /api/:owner/:repo/contents/:branch/:file` - Get file content
+- `GET /api/:owner/:repo/commits` - List commits
+- `GET /api/:owner/:repo/branches` - List branches
+- `POST /api/:owner/:repo/branches` - Create branch
+- `GET /api/:owner/:repo/contributors` - Get contributors
+- `GET /api/:owner/:repo/collaborators` - Get collaborators
+- `POST /api/:owner/:repo/collaborators` - Add collaborator
+
+### Issues & Pull Requests
+- `POST /api/:owner/:repo/issues` - Create issue
+- `GET /api/:owner/:repo/issues` - List issues
+- `POST /api/:owner/:repo/pulls` - Create PR
+- `GET /api/:owner/:repo/pulls` - List PRs
+- `POST /api/:owner/:repo/pulls/:number/merge` - Merge PR
 
 ### Organizations
 - `POST /api/organizations` - Create organization
-- `GET /api/organizations` - List user's organizations
-- `GET /api/organizations/:name` - Get organization details
-- `GET /api/organizations/:name/members` - Get organization members
-- `POST /api/organizations/:name/members` - Add organization member
+- `GET /api/organizations` - List organizations
+- `GET /api/organizations/:name` - Get organization
+- `POST /api/organizations/:name/follow` - Follow organization
 
-### Agent (Admin Only)
-- `POST /api/agent/execute` - Execute single command
-- `POST /api/agent/workflow` - Execute workflow (multiple commands)
-- `GET /api/agent/system-info` - Get system information
+### Users
+- `GET /api/profile/:username` - Get user profile
+- `POST /api/profile/:username/follow` - Follow user
+- `GET /api/profile/:username/followers` - Get followers
+- `GET /api/profile/:username/following` - Get following
 
-### Git HTTP Backend
-- `/git/:owner/:repo` - Git HTTP smart protocol endpoint
+### Admin
+- `GET /api/admin/users` - List all users
+- `POST /api/admin/users/:username/promote-admin` - Promote to admin
+- `POST /api/admin/users/:username/promote-moderator` - Promote to moderator
+- `POST /api/admin/users/:username/demote` - Demote user
+- `GET /api/admin/repositories` - List all repositories
+- `GET /api/admin/stats` - Platform statistics
 
-## Security
+### Search & Explore
+- `GET /api/search?q=query&type=all|repos|orgs|users` - Search
+- `GET /api/explore` - Trending and recent repos
 
-- Passwords are hashed using bcrypt
-- JWT tokens for authentication
-- Admin-only command execution
-- Whitelisted commands for agent execution
-- Command timeout protection (60 seconds)
+### Notifications
+- `GET /api/notifications` - Get notifications
+- `POST /api/notifications/:id/read` - Mark as read
+- `POST /api/notifications/read-all` - Mark all as read
 
-## Technology Stack
+### CI/CD
+- `POST /api/cicd/pipeline` - Create CI pipeline
+- `POST /api/cicd/deploy` - Deploy application
+- `GET /api/cicd/jobs` - List jobs
+- `GET /api/cicd/jobs/:id/logs` - Get job logs
 
-- **Backend**: Node.js, Express
-- **Database**: SQLite3
-- **Git**: isomorphic-git
-- **Authentication**: JWT, bcryptjs
-- **Frontend**: Vanilla JavaScript, HTML5, CSS3
-- **Code Editor**: VSCode Web (embedded)
+### Clusters
+- `GET /api/clusters` - List discovered clusters
+- `POST /api/clusters/:id/assign-task` - Assign task to cluster
 
-## Storage Structure
+### VSCode Editor
+- `POST /api/:owner/:repo/editor/start` - Start editor
+- `POST /api/:owner/:repo/editor/stop` - Stop editor
+- `GET /api/:owner/:repo/editor/status` - Check status
 
-```
-/mnt/repos/
-├── username1/
-│   ├── repo1/
-│   └── repo2/
-├── username2/
-│   └── repo3/
-└── org-name/
-    └── org-repo/
-```
+### Git HTTP Protocol
+- `/git/:owner/:repo/*` - Git smart HTTP protocol
 
-## Development
+## 🔧 Cluster Setup
 
-Run in development mode:
+### Installing Cluster Agent
+
+1. **Copy cluster directory to remote machine**
 ```bash
-npm run dev
+scp -r cluster/ user@cluster-machine:/path/to/cluster
 ```
 
-## License
+2. **Install dependencies on cluster**
+```bash
+cd /path/to/cluster
+npm install
+```
 
-ISC
+3. **Configure cluster**
+```bash
+cp .env.example .env
+# Edit .env with cluster configuration
+```
 
-## Contributing
+4. **Install as system service**
+```bash
+sudo node install-service.js
+```
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+5. **Start cluster agent**
+```bash
+sudo systemctl start codara-cluster
+```
+
+The cluster will automatically:
+- Broadcast its presence on the network
+- Report available resources (CPU, memory)
+- Execute jobs from shared storage
+- Stream logs back to main server
+
+## 📚 Usage Guide
+
+### Creating a Repository
+
+1. Login to Codara
+2. Click "+ New Repository"
+3. Fill in repository details
+4. Choose visibility (public/private)
+5. Clone and start coding!
+
+```bash
+git clone http://localhost:3000/git/username/repo-name
+cd repo-name
+# Make changes
+git add .
+git commit -m "Initial commit"
+git push origin main
+```
+
+### Using VSCode Editor
+
+1. Navigate to any repository
+2. Click "Browse Files"
+3. Click "🚀 Open in VSCode"
+4. Edit files in the integrated editor
+5. Changes auto-save and can be committed
+
+### Setting up CI/CD
+
+1. Create `.codara-ci.yml` in your repository
+2. Define pipeline stages
+3. Push to trigger pipeline
+4. Monitor live logs in web UI
+
+Example `.codara-ci.yml`:
+```yaml
+stages:
+  - build
+  - test
+  - deploy
+
+build:
+  script:
+    - npm install
+    - npm run build
+  artifacts:
+    - dist/
+
+test:
+  script:
+    - npm test
+
+deploy:
+  script:
+    - npm run deploy
+  only:
+    - main
+```
+
+## 🔒 Security
+
+- **Password Hashing**: Bcrypt or Argon2
+- **JWT Tokens**: Secure authentication
+- **CSRF Protection**: Built-in CSRF prevention
+- **XSS Protection**: Sanitized inputs
+- **Cluster Authentication**: Secret-based auth
+- **Permission System**: Role-based access control
+
+## 🤝 Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## 📄 License
+
+ISC License
+
+## 🙏 Credits
+
+Built with:
+- React & Vite
+- Express.js
+- Socket.io
+- Simple-git
+- Bull queue
+- SQLite3
+- And many other amazing open-source projects
+
+---
+
+**Codara** - Because your code deserves a better home. 🏠✨
