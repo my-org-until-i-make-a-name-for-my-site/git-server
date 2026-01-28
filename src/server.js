@@ -30,6 +30,9 @@ const issuesRoutes = require('./routes/issues');
 const pullsRoutes = require('./routes/pulls');
 const commitsRoutes = require('./routes/commits');
 const editorRoutes = require('./routes/editor');
+const searchRoutes = require('./routes/search');
+const exploreRoutes = require('./routes/explore');
+const notificationsRoutes = require('./routes/notifications');
 
 // Import services
 const ClusterDiscovery = require('./services/cluster-discovery');
@@ -114,6 +117,9 @@ app.use('/api/permissions', permissionsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/moderator', moderatorRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/explore', exploreRoutes);
+app.use('/api/notifications', notificationsRoutes);
 app.use('/api', issuesRoutes);
 app.use('/api', pullsRoutes);
 app.use('/api', commitsRoutes);

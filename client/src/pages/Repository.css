@@ -1,0 +1,243 @@
+.repository-page {
+  min-height: 100vh;
+  background: var(--bg-primary);
+}
+
+.repo-header {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 2rem 0;
+}
+
+.repo-header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.repo-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.repo-title h1 {
+  font-size: 1.75rem;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.repo-owner {
+  color: var(--text-link);
+  text-decoration: none;
+}
+
+.repo-owner:hover {
+  text-decoration: underline;
+}
+
+.repo-description {
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+.repo-stats {
+  display: flex;
+  gap: 1.5rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.repo-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.repo-tabs {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.repo-tabs-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  display: flex;
+  gap: 2rem;
+}
+
+.repo-tab {
+  padding: 1rem 0;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.repo-tab:hover {
+  color: var(--text-primary);
+  border-bottom-color: var(--border-color);
+}
+
+.repo-tab.active {
+  color: var(--text-link);
+  border-bottom-color: var(--text-link);
+}
+
+.repo-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.clone-section {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.clone-section h3 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.clone-url-container {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.clone-url {
+  flex: 1;
+  padding: 0.5rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+}
+
+.copy-btn {
+  padding: 0.5rem 1rem;
+  background: var(--button-secondary-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.copy-btn:hover {
+  background: var(--button-secondary-hover);
+}
+
+.issue-list, .pr-list, .commit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.issue-item, .pr-item, .commit-item {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+  transition: all 0.2s;
+}
+
+.issue-item:hover, .pr-item:hover, .commit-item:hover {
+  border-color: var(--text-link);
+}
+
+.issue-title, .pr-title {
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.issue-meta, .pr-meta, .commit-meta {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.issue-number {
+  color: var(--text-secondary);
+  margin-right: 0.5rem;
+}
+
+.issue-state, .pr-state {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-right: 0.5rem;
+}
+
+.issue-state.open, .pr-state.open {
+  background: #238636;
+  color: white;
+}
+
+.issue-state.closed, .pr-state.closed {
+  background: #da3633;
+  color: white;
+}
+
+.pr-state.merged {
+  background: #8957e5;
+  color: white;
+}
+
+.create-btn {
+  padding: 0.5rem 1rem;
+  background: var(--button-primary-bg);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+  margin-bottom: 1rem;
+}
+
+.create-btn:hover {
+  background: var(--button-primary-hover);
+}
+
+.commit-sha {
+  font-family: 'Courier New', monospace;
+  color: var(--text-link);
+  font-size: 0.9rem;
+  margin-right: 0.5rem;
+}
+
+.commit-message {
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-secondary);
+}
+
+.empty-state h3 {
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}

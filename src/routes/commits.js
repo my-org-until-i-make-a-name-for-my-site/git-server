@@ -276,4 +276,133 @@ router.post('/:owner/:repo/push', authenticateToken, (req, res) => {
   );
 });
 
+// Get contributors for a repository
+router.get('/:owner/:repo/contributors', async (req, res) => {
+  const { owner, repo } = req.params;
+
+  db.get(
+    `SELECT r.* FROM repositories r
+     LEFT JOIN users u ON r.owner_id = u.id AND r.owner_type = 'user'
+     LEFT JOIN organizations o ON r.owner_id = o.id AND r.owner_type = 'org'
+     WHERE r.name = ? AND (u.username = ? OR o.name = ?)`,
+    [repo, owner, owner],
+    async (err, repository) => {
+      if (err || !repository) {
+        return res.status(404).json({ error: 'Repository not found' });
+      }
+
+      try {
+        const git = simpleGit(repository.path);
+        const log = await git.log();
+        
+        // Count contributions per author
+        const contributorsMap = {};
+        log.all.forEach(commit => {
+          const key = commit.author_email;
+          if (!contributorsMap[key]) {
+            contributorsMap[key] = {
+              name: commit.author_name,
+              email: commit.author_email,
+              commits: 0
+            };
+          }
+          contributorsMap[key].commits++;
+        });
+
+        const contributors = Object.values(contributorsMap)
+          .sort((a, b) => b.commits - a.commits);
+
+        res.json({ contributors });
+      } catch (error) {
+        console.error('Error getting contributors:', error);
+        res.status(500).json({ error: 'Failed to get contributors' });
+      }
+    }
+  );
+});
+
+// Add collaborator to repository
+router.post('/:owner/:repo/collaborators', authenticateToken, async (req, res) => {
+  const { owner, repo } = req.params;
+  const { username, permission = 'write' } = req.body;
+
+  if (!username) {
+    return res.status(400).json({ error: 'Username is required' });
+  }
+
+  db.get(
+    `SELECT r.* FROM repositories r
+     LEFT JOIN users u ON r.owner_id = u.id AND r.owner_type = 'user'
+     LEFT JOIN organizations o ON r.owner_id = o.id AND r.owner_type = 'org'
+     WHERE r.name = ? AND (u.username = ? OR o.name = ?)`,
+    [repo, owner, owner],
+    (err, repository) => {
+      if (err || !repository) {
+        return res.status(404).json({ error: 'Repository not found' });
+      }
+
+      // Check if user is owner
+      if (repository.owner_id !== req.user.id) {
+        return res.status(403).json({ error: 'Only repository owner can add collaborators' });
+      }
+
+      // Get user to add
+      db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
+        if (err || !user) {
+          return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Add collaborator
+        db.run(
+          `INSERT OR REPLACE INTO repo_collaborators (repo_id, user_id, permission) 
+           VALUES (?, ?, ?)`,
+          [repository.id, user.id, permission],
+          function (err) {
+            if (err) {
+              console.error('Error adding collaborator:', err);
+              return res.status(500).json({ error: 'Failed to add collaborator' });
+            }
+
+            res.json({ message: `${username} added as collaborator` });
+          }
+        );
+      });
+    }
+  );
+});
+
+// Get collaborators
+router.get('/:owner/:repo/collaborators', async (req, res) => {
+  const { owner, repo } = req.params;
+
+  db.get(
+    `SELECT r.* FROM repositories r
+     LEFT JOIN users u ON r.owner_id = u.id AND r.owner_type = 'user'
+     LEFT JOIN organizations o ON r.owner_id = o.id AND r.owner_type = 'org'
+     WHERE r.name = ? AND (u.username = ? OR o.name = ?)`,
+    [repo, owner, owner],
+    (err, repository) => {
+      if (err || !repository) {
+        return res.status(404).json({ error: 'Repository not found' });
+      }
+
+      db.all(
+        `SELECT u.username, u.email, c.permission, c.created_at
+         FROM repo_collaborators c
+         JOIN users u ON c.user_id = u.id
+         WHERE c.repo_id = ?`,
+        [repository.id],
+        (err, collaborators) => {
+          if (err) {
+            console.error('Error getting collaborators:', err);
+            return res.status(500).json({ error: 'Failed to get collaborators' });
+          }
+
+          res.json({ collaborators: collaborators || [] });
+        }
+      );
+    }
+  );
+});
+
 module.exports = router;

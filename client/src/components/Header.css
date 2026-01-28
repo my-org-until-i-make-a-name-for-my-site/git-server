@@ -1,6 +1,6 @@
 .header {
-  background: #161b22;
-  border-bottom: 1px solid #30363d;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
   padding: 16px 0;
 }
 
@@ -16,12 +16,12 @@
 .header-logo {
   font-size: 20px;
   font-weight: 700;
-  color: #58a6ff;
+  color: var(--text-link);
   text-decoration: none;
 }
 
 .header-logo:hover {
-  color: #79c0ff;
+  opacity: 0.8;
 }
 
 .header-nav {
@@ -30,7 +30,7 @@
 }
 
 .nav-link {
-  color: #c9d1d9;
+  color: var(--text-secondary);
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
@@ -38,17 +38,31 @@
 }
 
 .nav-link:hover {
-  color: #58a6ff;
+  color: var(--text-link);
 }
 
-.header-user {
+.header-actions {
   display: flex;
   align-items: center;
   gap: 16px;
 }
 
+.theme-toggle {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: opacity 0.2s;
+  line-height: 1;
+}
+
+.theme-toggle:hover {
+  opacity: 0.7;
+}
+
 .user-link {
-  color: #c9d1d9;
+  color: var(--text-primary);
   text-decoration: none;
   font-size: 14px;
   display: flex;
@@ -62,6 +76,7 @@
   border-radius: 12px;
   font-size: 11px;
   font-weight: 600;
+  color: white;
 }
 
 .badge.mod {
@@ -70,9 +85,9 @@
 
 .logout-btn {
   padding: 6px 16px;
-  background: #21262d;
-  color: #c9d1d9;
-  border: 1px solid #30363d;
+  background: var(--button-secondary-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   font-size: 14px;
   cursor: pointer;
@@ -80,5 +95,6 @@
 }
 
 .logout-btn:hover {
-  background: #30363d;
+  background: var(--button-secondary-hover);
 }
+
