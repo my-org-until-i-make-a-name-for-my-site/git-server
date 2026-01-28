@@ -5,6 +5,11 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const http = require('http');
+const { getConfig } = require('./utils/config');
+
+// Load configuration
+const config = getConfig();
+console.log('Application configuration loaded');
 
 // Initialize database
 require('./database');
@@ -18,6 +23,13 @@ const agentRoutes = require('./routes/agent');
 const clusterRoutes = require('./routes/clusters');
 const cicdRoutes = require('./routes/cicd');
 const permissionsRoutes = require('./routes/permissions');
+const adminRoutes = require('./routes/admin');
+const profileRoutes = require('./routes/profile');
+const moderatorRoutes = require('./routes/moderator');
+const issuesRoutes = require('./routes/issues');
+const pullsRoutes = require('./routes/pulls');
+const commitsRoutes = require('./routes/commits');
+const editorRoutes = require('./routes/editor');
 
 // Import services
 const ClusterDiscovery = require('./services/cluster-discovery');
@@ -29,7 +41,7 @@ const JobManager = require('./services/job-manager');
 
 const app = express();
 const server = http.createServer(app);
-const PORT = process.env.PORT || 3000;
+const PORT = config.get('server', 'port', process.env.PORT || 3000);
 
 // Middleware
 app.use(cors());
@@ -37,8 +49,16 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Static files
-app.use(express.static(path.join(__dirname, '../public')));
+// Serve built React app from dist folder
+const distPath = path.join(__dirname, '../dist');
+if (require('fs').existsSync(distPath)) {
+  app.use(express.static(distPath));
+  console.log('Serving React app from dist/');
+} else {
+  // Fallback to old public folder
+  app.use(express.static(path.join(__dirname, '../public')));
+  console.log('Serving from public/ (dist/ not found)');
+}
 
 // Initialize services
 let clusterDiscovery = null;
@@ -50,8 +70,8 @@ let cdPipeline = null;
 let jobManager = null;
 
 // Start cluster discovery if enabled
-if (process.env.ENABLE_CLUSTER_DISCOVERY === 'true') {
-  clusterDiscovery = new ClusterDiscovery(parseInt(process.env.CLUSTER_DISCOVERY_PORT) || 4001);
+if (config.get('clusters', 'enable_discovery', process.env.ENABLE_CLUSTER_DISCOVERY === 'true')) {
+  clusterDiscovery = new ClusterDiscovery(config.get('clusters', 'discovery_port', parseInt(process.env.CLUSTER_DISCOVERY_PORT) || 4001));
   clusterDiscovery.start();
   
   clusterDiscovery.on('cluster_discovered', (cluster) => {
@@ -63,7 +83,7 @@ if (process.env.ENABLE_CLUSTER_DISCOVERY === 'true') {
   });
 
   // Initialize cluster manager
-  clusterManager = new ClusterManager(clusterDiscovery, process.env.CLUSTER_SECRET);
+  clusterManager = new ClusterManager(clusterDiscovery, config.get('clusters', 'cluster_secret', process.env.CLUSTER_SECRET));
 }
 
 // Initialize task manager
@@ -91,13 +111,35 @@ app.use('/api/agent', agentRoutes);
 app.use('/api/clusters', clusterRoutes);
 app.use('/api/cicd', cicdRoutes);
 app.use('/api/permissions', permissionsRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/moderator', moderatorRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api', issuesRoutes);
+app.use('/api', pullsRoutes);
+app.use('/api', commitsRoutes);
+app.use('/api', editorRoutes);
+
+// Config API endpoint
+app.get('/api/config', (req, res) => {
+  // Return public config (not secrets)
+  const publicConfig = {
+    appName: config.get('general', 'app_name', 'Codara'),
+    version: config.get('general', 'version', '1.0.0'),
+    features: config.getSection('features'),
+    allowUserRegistration: config.get('admin', 'allow_user_registration', true)
+  };
+  res.json(publicConfig);
+});
 
 // Git HTTP backend
 app.use('/git', gitRoutes);
 
-// Serve frontend for all other routes
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
+// Serve frontend for all other routes (React Router)
+app.get('*', (req, res) => {
+  const indexPath = require('fs').existsSync(distPath) 
+    ? path.join(distPath, 'index.html')
+    : path.join(__dirname, '../public/index.html');
+  res.sendFile(indexPath);
 });
 
 // Error handler

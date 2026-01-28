@@ -74,7 +74,139 @@ router.get('/:name', authenticateToken, (req, res) => {
     if (!org) {
       return res.status(404).json({ error: 'Organization not found' });
     }
-    res.json({ organization: org });
+
+    // Get org repositories
+    db.all(
+      `SELECT r.* FROM repositories r 
+       WHERE r.owner_type = 'org' AND r.owner_id = ?
+       ORDER BY r.created_at DESC`,
+      [org.id],
+      (err, repos) => {
+        if (err) {
+          return res.status(500).json({ error: 'Database error' });
+        }
+
+        // Get follower count
+        db.get(
+          'SELECT COUNT(*) as count FROM org_followers WHERE org_id = ?',
+          [org.id],
+          (err, followerCount) => {
+            if (err) {
+              return res.status(500).json({ error: 'Database error' });
+            }
+
+            res.json({
+              organization: {
+                ...org,
+                followerCount: followerCount.count
+              },
+              repositories: repos
+            });
+          }
+        );
+      }
+    );
+  });
+});
+
+// Get organization followers
+router.get('/:name/followers', (req, res) => {
+  const { name } = req.params;
+
+  db.get('SELECT id FROM organizations WHERE name = ?', [name], (err, org) => {
+    if (err || !org) {
+      return res.status(404).json({ error: 'Organization not found' });
+    }
+
+    db.all(
+      `SELECT u.id, u.username, u.email, u.created_at 
+       FROM users u
+       JOIN org_followers of ON u.id = of.user_id
+       WHERE of.org_id = ?
+       ORDER BY of.created_at DESC`,
+      [org.id],
+      (err, followers) => {
+        if (err) {
+          return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ followers });
+      }
+    );
+  });
+});
+
+// Follow an organization
+router.post('/:name/follow', authenticateToken, (req, res) => {
+  const { name } = req.params;
+  const userId = req.user.id;
+
+  db.get('SELECT id FROM organizations WHERE name = ?', [name], (err, org) => {
+    if (err || !org) {
+      return res.status(404).json({ error: 'Organization not found' });
+    }
+
+    db.run(
+      'INSERT INTO org_followers (org_id, user_id) VALUES (?, ?)',
+      [org.id, userId],
+      (err) => {
+        if (err) {
+          if (err.message.includes('UNIQUE')) {
+            return res.status(400).json({ error: 'Already following this organization' });
+          }
+          return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ message: `Now following ${name}` });
+      }
+    );
+  });
+});
+
+// Unfollow an organization
+router.delete('/:name/follow', authenticateToken, (req, res) => {
+  const { name } = req.params;
+  const userId = req.user.id;
+
+  db.get('SELECT id FROM organizations WHERE name = ?', [name], (err, org) => {
+    if (err || !org) {
+      return res.status(404).json({ error: 'Organization not found' });
+    }
+
+    db.run(
+      'DELETE FROM org_followers WHERE org_id = ? AND user_id = ?',
+      [org.id, userId],
+      function (err) {
+        if (err) {
+          return res.status(500).json({ error: 'Database error' });
+        }
+        if (this.changes === 0) {
+          return res.status(400).json({ error: 'Not following this organization' });
+        }
+        res.json({ message: `Unfollowed ${name}` });
+      }
+    );
+  });
+});
+
+// Check if current user follows this organization
+router.get('/:name/is-following', authenticateToken, (req, res) => {
+  const { name } = req.params;
+  const userId = req.user.id;
+
+  db.get('SELECT id FROM organizations WHERE name = ?', [name], (err, org) => {
+    if (err || !org) {
+      return res.status(404).json({ error: 'Organization not found' });
+    }
+
+    db.get(
+      'SELECT id FROM org_followers WHERE org_id = ? AND user_id = ?',
+      [org.id, userId],
+      (err, follow) => {
+        if (err) {
+          return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ isFollowing: !!follow });
+      }
+    );
   });
 });
 

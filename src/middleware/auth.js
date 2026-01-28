@@ -33,7 +33,23 @@ function isAdmin(req, res, next) {
   next();
 }
 
+function isModerator(req, res, next) {
+  if (!req.user || (req.user.role !== 'moderator' && req.user.role !== 'admin')) {
+    return res.status(403).json({ error: 'Moderator or admin access required' });
+  }
+  next();
+}
+
+function isAdminOrModerator(req, res, next) {
+  if (!req.user || (req.user.role !== 'moderator' && req.user.role !== 'admin')) {
+    return res.status(403).json({ error: 'Moderator or admin access required' });
+  }
+  next();
+}
+
 module.exports = {
   authenticateToken,
-  isAdmin
+  isAdmin,
+  isModerator,
+  isAdminOrModerator
 };

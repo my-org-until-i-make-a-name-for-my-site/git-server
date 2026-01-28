@@ -25,6 +25,7 @@ function initDatabase() {
         username TEXT UNIQUE NOT NULL,
         email TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
+        role TEXT DEFAULT 'user',
         is_admin INTEGER DEFAULT 0,
         dob TEXT,
         country TEXT,
@@ -86,6 +87,184 @@ function initDatabase() {
         FOREIGN KEY (repo_id) REFERENCES repositories(id),
         FOREIGN KEY (user_id) REFERENCES users(id),
         UNIQUE(repo_id, user_id)
+      )
+    `);
+
+    // User followers
+    db.run(`
+      CREATE TABLE IF NOT EXISTS user_followers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        follower_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (follower_id) REFERENCES users(id),
+        UNIQUE(user_id, follower_id)
+      )
+    `);
+
+    // Organization followers
+    db.run(`
+      CREATE TABLE IF NOT EXISTS org_followers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        org_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (org_id) REFERENCES organizations(id),
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        UNIQUE(org_id, user_id)
+      )
+    `);
+
+    // Issues
+    db.run(`
+      CREATE TABLE IF NOT EXISTS issues (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        repo_id INTEGER NOT NULL,
+        issue_number INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        body TEXT,
+        state TEXT DEFAULT 'open',
+        author_id INTEGER NOT NULL,
+        assignee_id INTEGER,
+        closed_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (repo_id) REFERENCES repositories(id),
+        FOREIGN KEY (author_id) REFERENCES users(id),
+        FOREIGN KEY (assignee_id) REFERENCES users(id),
+        UNIQUE(repo_id, issue_number)
+      )
+    `);
+
+    // Issue comments
+    db.run(`
+      CREATE TABLE IF NOT EXISTS issue_comments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        issue_id INTEGER NOT NULL,
+        author_id INTEGER NOT NULL,
+        body TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (issue_id) REFERENCES issues(id),
+        FOREIGN KEY (author_id) REFERENCES users(id)
+      )
+    `);
+
+    // Pull requests
+    db.run(`
+      CREATE TABLE IF NOT EXISTS pull_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        repo_id INTEGER NOT NULL,
+        pr_number INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        body TEXT,
+        state TEXT DEFAULT 'open',
+        head_branch TEXT NOT NULL,
+        base_branch TEXT NOT NULL,
+        author_id INTEGER NOT NULL,
+        assignee_id INTEGER,
+        merged INTEGER DEFAULT 0,
+        merged_at DATETIME,
+        merged_by_id INTEGER,
+        closed_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (repo_id) REFERENCES repositories(id),
+        FOREIGN KEY (author_id) REFERENCES users(id),
+        FOREIGN KEY (assignee_id) REFERENCES users(id),
+        FOREIGN KEY (merged_by_id) REFERENCES users(id),
+        UNIQUE(repo_id, pr_number)
+      )
+    `);
+
+    // PR comments
+    db.run(`
+      CREATE TABLE IF NOT EXISTS pr_comments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        pr_id INTEGER NOT NULL,
+        author_id INTEGER NOT NULL,
+        body TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (pr_id) REFERENCES pull_requests(id),
+        FOREIGN KEY (author_id) REFERENCES users(id)
+      )
+    `);
+
+    // Issue labels
+    db.run(`
+      CREATE TABLE IF NOT EXISTS labels (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        repo_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        color TEXT DEFAULT '#000000',
+        description TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (repo_id) REFERENCES repositories(id),
+        UNIQUE(repo_id, name)
+      )
+    `);
+
+    // Issue-Label relationship
+    db.run(`
+      CREATE TABLE IF NOT EXISTS issue_labels (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        issue_id INTEGER NOT NULL,
+        label_id INTEGER NOT NULL,
+        FOREIGN KEY (issue_id) REFERENCES issues(id),
+        FOREIGN KEY (label_id) REFERENCES labels(id),
+        UNIQUE(issue_id, label_id)
+      )
+    `);
+
+    // Commits
+    db.run(`
+      CREATE TABLE IF NOT EXISTS commits (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        repo_id INTEGER NOT NULL,
+        sha TEXT NOT NULL,
+        author_name TEXT NOT NULL,
+        author_email TEXT NOT NULL,
+        author_id INTEGER,
+        message TEXT NOT NULL,
+        branch TEXT,
+        parent_sha TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (repo_id) REFERENCES repositories(id),
+        FOREIGN KEY (author_id) REFERENCES users(id),
+        UNIQUE(repo_id, sha)
+      )
+    `);
+
+    // Push events
+    db.run(`
+      CREATE TABLE IF NOT EXISTS push_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        repo_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        ref TEXT NOT NULL,
+        before_sha TEXT,
+        after_sha TEXT,
+        commit_count INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (repo_id) REFERENCES repositories(id),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `);
+
+    // Repository branches
+    db.run(`
+      CREATE TABLE IF NOT EXISTS branches (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        repo_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        head_sha TEXT,
+        is_default INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (repo_id) REFERENCES repositories(id),
+        UNIQUE(repo_id, name)
       )
     `);
 

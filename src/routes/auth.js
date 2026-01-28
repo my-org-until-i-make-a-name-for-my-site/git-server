@@ -23,10 +23,11 @@ router.post('/register', async (req, res) => {
 
       const isFirstUser = row.count === 0;
       const hashedPassword = await hashPassword(password);
+      const role = isFirstUser ? 'admin' : 'user';
 
       db.run(
-        'INSERT INTO users (username, email, password, is_admin, dob, country) VALUES (?, ?, ?, ?, ?, ?)',
-        [username, email, hashedPassword, isFirstUser ? 1 : 0, dob, country],
+        'INSERT INTO users (username, email, password, role, is_admin, dob, country) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [username, email, hashedPassword, role, isFirstUser ? 1 : 0, dob, country],
         function (err) {
           if (err) {
             if (err.message.includes('UNIQUE')) {
@@ -37,7 +38,7 @@ router.post('/register', async (req, res) => {
 
           const userId = this.lastID;
           const token = jwt.sign(
-            { id: userId, username, is_admin: isFirstUser },
+            { id: userId, username, is_admin: isFirstUser, role: role },
             JWT_SECRET,
             { expiresIn: '7d' }
           );
@@ -45,7 +46,7 @@ router.post('/register', async (req, res) => {
           res.json({
             message: isFirstUser ? 'Admin user created successfully' : 'User created successfully',
             token,
-            user: { id: userId, username, email, is_admin: isFirstUser }
+            user: { id: userId, username, email, is_admin: isFirstUser, role: role }
           });
         }
       );
@@ -78,7 +79,7 @@ router.post('/login', (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, username: user.username, is_admin: user.is_admin },
+      { id: user.id, username: user.username, is_admin: user.is_admin, role: user.role || 'user' },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -90,7 +91,8 @@ router.post('/login', (req, res) => {
         id: user.id,
         username: user.username,
         email: user.email,
-        is_admin: user.is_admin
+        is_admin: user.is_admin,
+        role: user.role || 'user'
       }
     });
   });
@@ -110,7 +112,7 @@ router.get('/me', (req, res) => {
       return res.status(403).json({ error: 'Invalid token' });
     }
 
-    db.get('SELECT id, username, email, is_admin FROM users WHERE id = ?', [decoded.id], (err, user) => {
+    db.get('SELECT id, username, email, is_admin, role FROM users WHERE id = ?', [decoded.id], (err, user) => {
       if (err || !user) {
         return res.status(404).json({ error: 'User not found' });
       }
