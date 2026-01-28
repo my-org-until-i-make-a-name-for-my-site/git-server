@@ -70,6 +70,13 @@ web_modules/
 .env.*
 !.env.example
 
+# Database files
+data/
+
+# Repository storage
+repos/
+/mnt/repos/
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache

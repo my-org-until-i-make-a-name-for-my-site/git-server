@@ -1,0 +1,469 @@
+const express = require('express');
+const db = require('../database');
+const { authenticateToken } = require('../middleware/auth');
+const simpleGit = require('simple-git');
+const path = require('path');
+const fs = require('fs-extra');
+
+const router = express.Router();
+const REPOS_BASE_PATH = process.env.REPOS_BASE_PATH || './repos';
+
+// Get commits for a repository
+router.get('/:owner/:repo/commits', async (req, res) => {
+  const { owner, repo } = req.params;
+  const { branch = 'main', page = 1, per_page = 30 } = req.query;
+
+  db.get(
+    `SELECT r.* FROM repositories r
+     LEFT JOIN users u ON r.owner_id = u.id AND r.owner_type = 'user'
+     LEFT JOIN organizations o ON r.owner_id = o.id AND r.owner_type = 'org'
+     WHERE r.name = ? AND (u.username = ? OR o.name = ?)`,
+    [repo, owner, owner],
+    async (err, repository) => {
+      if (err || !repository) {
+        return res.status(404).json({ error: 'Repository not found' });
+      }
+
+      try {
+        const git = simpleGit(repository.path);
+        const log = await git.log({
+          from: branch,
+          maxCount: parseInt(per_page),
+          '--skip': (page - 1) * per_page
+        });
+
+        // Store commits in database
+        for (const commit of log.all) {
+          db.run(
+            `INSERT OR IGNORE INTO commits (repo_id, sha, author_name, author_email, message, branch) 
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [repository.id, commit.hash, commit.author_name, commit.author_email, commit.message, branch]
+          );
+        }
+
+        res.json({ commits: log.all });
+      } catch (error) {
+        console.error('Error getting commits:', error);
+        res.status(500).json({ error: 'Failed to get commits' });
+      }
+    }
+  );
+});
+
+// Get a specific commit
+router.get('/:owner/:repo/commits/:sha', async (req, res) => {
+  const { owner, repo, sha } = req.params;
+
+  db.get(
+    `SELECT r.* FROM repositories r
+     LEFT JOIN users u ON r.owner_id = u.id AND r.owner_type = 'user'
+     LEFT JOIN organizations o ON r.owner_id = o.id AND r.owner_type = 'org'
+     WHERE r.name = ? AND (u.username = ? OR o.name = ?)`,
+    [repo, owner, owner],
+    async (err, repository) => {
+      if (err || !repository) {
+        return res.status(404).json({ error: 'Repository not found' });
+      }
+
+      try {
+        const git = simpleGit(repository.path);
+        const commit = await git.show([sha]);
+        
+        res.json({ commit: commit });
+      } catch (error) {
+        console.error('Error getting commit:', error);
+        res.status(404).json({ error: 'Commit not found' });
+      }
+    }
+  );
+});
+
+// Get branches
+router.get('/:owner/:repo/branches', async (req, res) => {
+  const { owner, repo } = req.params;
+
+  db.get(
+    `SELECT r.* FROM repositories r
+     LEFT JOIN users u ON r.owner_id = u.id AND r.owner_type = 'user'
+     LEFT JOIN organizations o ON r.owner_id = o.id AND r.owner_type = 'org'
+     WHERE r.name = ? AND (u.username = ? OR o.name = ?)`,
+    [repo, owner, owner],
+    async (err, repository) => {
+      if (err || !repository) {
+        return res.status(404).json({ error: 'Repository not found' });
+      }
+
+      try {
+        const git = simpleGit(repository.path);
+        const branches = await git.branch();
+        
+        res.json({ branches: branches.all, current: branches.current });
+      } catch (error) {
+        console.error('Error getting branches:', error);
+        res.status(500).json({ error: 'Failed to get branches' });
+      }
+    }
+  );
+});
+
+// Create a new branch
+router.post('/:owner/:repo/branches', authenticateToken, async (req, res) => {
+  const { owner, repo } = req.params;
+  const { name, from } = req.body;
+
+  if (!name) {
+    return res.status(400).json({ error: 'Branch name is required' });
+  }
+
+  db.get(
+    `SELECT r.* FROM repositories r
+     LEFT JOIN users u ON r.owner_id = u.id AND r.owner_type = 'user'
+     LEFT JOIN organizations o ON r.owner_id = o.id AND r.owner_type = 'org'
+     WHERE r.name = ? AND (u.username = ? OR o.name = ?)`,
+    [repo, owner, owner],
+    async (err, repository) => {
+      if (err || !repository) {
+        return res.status(404).json({ error: 'Repository not found' });
+      }
+
+      try {
+        const git = simpleGit(repository.path);
+        await git.checkoutLocalBranch(name);
+        
+        if (from) {
+          await git.reset(['--hard', from]);
+        }
+
+        res.json({ message: `Branch ${name} created successfully` });
+      } catch (error) {
+        console.error('Error creating branch:', error);
+        res.status(500).json({ error: 'Failed to create branch' });
+      }
+    }
+  );
+});
+
+// Get file tree
+router.get('/:owner/:repo/tree/:branch', async (req, res) => {
+  const { owner, repo, branch } = req.params;
+  const filepath = '';
+
+  db.get(
+    `SELECT r.* FROM repositories r
+     LEFT JOIN users u ON r.owner_id = u.id AND r.owner_type = 'user'
+     LEFT JOIN organizations o ON r.owner_id = o.id AND r.owner_type = 'org'
+     WHERE r.name = ? AND (u.username = ? OR o.name = ?)`,
+    [repo, owner, owner],
+    async (err, repository) => {
+      if (err || !repository) {
+        return res.status(404).json({ error: 'Repository not found' });
+      }
+
+      try {
+        const fullPath = path.join(repository.path, filepath);
+        
+        if (!fs.existsSync(fullPath)) {
+          return res.status(404).json({ error: 'Path not found' });
+        }
+
+        const stats = fs.statSync(fullPath);
+        
+        if (stats.isDirectory()) {
+          const files = fs.readdirSync(fullPath);
+          
+          // Filter out git internals
+          const gitInternals = ['.git', 'HEAD', 'config', 'description', 'hooks', 'info', 'objects', 'refs', 'packed-refs'];
+          
+          const tree = files
+            .filter(f => !gitInternals.includes(f))
+            .map(file => {
+              const filePath = path.join(fullPath, file);
+              const fileStats = fs.statSync(filePath);
+              return {
+                name: file,
+                path: path.join(filepath, file),
+                type: fileStats.isDirectory() ? 'tree' : 'blob',
+                size: fileStats.size
+              };
+            });
+          
+          res.json({ tree });
+        } else {
+          // Return file content
+          const content = fs.readFileSync(fullPath, 'utf8');
+          res.json({ 
+            type: 'blob', 
+            content,
+            size: stats.size,
+            path: filepath
+          });
+        }
+      } catch (error) {
+        console.error('Error reading tree:', error);
+        res.status(500).json({ error: 'Failed to read repository tree' });
+      }
+    }
+  );
+});
+
+// Get file tree with path
+router.get('/:owner/:repo/tree/:branch/:filepath', async (req, res) => {
+  const { owner, repo, branch, filepath } = req.params;
+
+  db.get(
+    `SELECT r.* FROM repositories r
+     LEFT JOIN users u ON r.owner_id = u.id AND r.owner_type = 'user'
+     LEFT JOIN organizations o ON r.owner_id = o.id AND r.owner_type = 'org'
+     WHERE r.name = ? AND (u.username = ? OR o.name = ?)`,
+    [repo, owner, owner],
+    async (err, repository) => {
+      if (err || !repository) {
+        return res.status(404).json({ error: 'Repository not found' });
+      }
+
+      try {
+        const fullPath = path.join(repository.path, filepath);
+        
+        if (!fs.existsSync(fullPath)) {
+          return res.status(404).json({ error: 'Path not found' });
+        }
+
+        const stats = fs.statSync(fullPath);
+        
+        if (stats.isDirectory()) {
+          const files = fs.readdirSync(fullPath);
+          const tree = files
+            .filter(f => !f.startsWith('.git'))
+            .map(file => {
+              const filePath = path.join(fullPath, file);
+              const fileStats = fs.statSync(filePath);
+              return {
+                name: file,
+                path: path.join(filepath, file),
+                type: fileStats.isDirectory() ? 'tree' : 'blob',
+                size: fileStats.size
+              };
+            });
+          
+          res.json({ tree });
+        } else {
+          // Return file content
+          const content = fs.readFileSync(fullPath, 'utf8');
+          res.json({ 
+            type: 'blob', 
+            content,
+            size: stats.size,
+            path: filepath
+          });
+        }
+      } catch (error) {
+        console.error('Error reading tree:', error);
+        res.status(500).json({ error: 'Failed to read repository tree' });
+      }
+    }
+  );
+});
+
+// Get file content
+router.get('/:owner/:repo/contents/:branch/:filepath', async (req, res) => {
+  const { owner, repo, branch, filepath } = req.params;
+
+  db.get(
+    `SELECT r.* FROM repositories r
+     LEFT JOIN users u ON r.owner_id = u.id AND r.owner_type = 'user'
+     LEFT JOIN organizations o ON r.owner_id = o.id AND r.owner_type = 'org'
+     WHERE r.name = ? AND (u.username = ? OR o.name = ?)`,
+    [repo, owner, owner],
+    async (err, repository) => {
+      if (err || !repository) {
+        return res.status(404).json({ error: 'Repository not found' });
+      }
+
+      try {
+        const fullPath = path.join(repository.path, filepath);
+        
+        if (!fs.existsSync(fullPath)) {
+          return res.status(404).json({ error: 'File not found' });
+        }
+
+        const content = fs.readFileSync(fullPath, 'utf8');
+        const stats = fs.statSync(fullPath);
+        
+        res.json({ 
+          content,
+          size: stats.size,
+          path: filepath,
+          name: path.basename(filepath)
+        });
+      } catch (error) {
+        console.error('Error reading file:', error);
+        res.status(500).json({ error: 'Failed to read file' });
+      }
+    }
+  );
+});
+
+// Record push event
+router.post('/:owner/:repo/push', authenticateToken, (req, res) => {
+  const { owner, repo } = req.params;
+  const { ref, before, after, commits = [] } = req.body;
+  const userId = req.user.id;
+
+  db.get(
+    `SELECT r.* FROM repositories r
+     LEFT JOIN users u ON r.owner_id = u.id AND r.owner_type = 'user'
+     LEFT JOIN organizations o ON r.owner_id = o.id AND r.owner_type = 'org'
+     WHERE r.name = ? AND (u.username = ? OR o.name = ?)`,
+    [repo, owner, owner],
+    (err, repository) => {
+      if (err || !repository) {
+        return res.status(404).json({ error: 'Repository not found' });
+      }
+
+      db.run(
+        `INSERT INTO push_events (repo_id, user_id, ref, before_sha, after_sha, commit_count) 
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [repository.id, userId, ref, before, after, commits.length],
+        function (err) {
+          if (err) {
+            console.error('Error recording push:', err);
+            return res.status(500).json({ error: 'Failed to record push event' });
+          }
+
+          res.json({ message: 'Push event recorded' });
+        }
+      );
+    }
+  );
+});
+
+// Get contributors for a repository
+router.get('/:owner/:repo/contributors', async (req, res) => {
+  const { owner, repo } = req.params;
+
+  db.get(
+    `SELECT r.* FROM repositories r
+     LEFT JOIN users u ON r.owner_id = u.id AND r.owner_type = 'user'
+     LEFT JOIN organizations o ON r.owner_id = o.id AND r.owner_type = 'org'
+     WHERE r.name = ? AND (u.username = ? OR o.name = ?)`,
+    [repo, owner, owner],
+    async (err, repository) => {
+      if (err || !repository) {
+        return res.status(404).json({ error: 'Repository not found' });
+      }
+
+      try {
+        const git = simpleGit(repository.path);
+        const log = await git.log();
+        
+        // Count contributions per author
+        const contributorsMap = {};
+        log.all.forEach(commit => {
+          const key = commit.author_email;
+          if (!contributorsMap[key]) {
+            contributorsMap[key] = {
+              name: commit.author_name,
+              email: commit.author_email,
+              commits: 0
+            };
+          }
+          contributorsMap[key].commits++;
+        });
+
+        const contributors = Object.values(contributorsMap)
+          .sort((a, b) => b.commits - a.commits);
+
+        res.json({ contributors });
+      } catch (error) {
+        console.error('Error getting contributors:', error);
+        res.status(500).json({ error: 'Failed to get contributors' });
+      }
+    }
+  );
+});
+
+// Add collaborator to repository
+router.post('/:owner/:repo/collaborators', authenticateToken, async (req, res) => {
+  const { owner, repo } = req.params;
+  const { username, permission = 'write' } = req.body;
+
+  if (!username) {
+    return res.status(400).json({ error: 'Username is required' });
+  }
+
+  db.get(
+    `SELECT r.* FROM repositories r
+     LEFT JOIN users u ON r.owner_id = u.id AND r.owner_type = 'user'
+     LEFT JOIN organizations o ON r.owner_id = o.id AND r.owner_type = 'org'
+     WHERE r.name = ? AND (u.username = ? OR o.name = ?)`,
+    [repo, owner, owner],
+    (err, repository) => {
+      if (err || !repository) {
+        return res.status(404).json({ error: 'Repository not found' });
+      }
+
+      // Check if user is owner
+      if (repository.owner_id !== req.user.id) {
+        return res.status(403).json({ error: 'Only repository owner can add collaborators' });
+      }
+
+      // Get user to add
+      db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
+        if (err || !user) {
+          return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Add collaborator
+        db.run(
+          `INSERT OR REPLACE INTO repo_collaborators (repo_id, user_id, permission) 
+           VALUES (?, ?, ?)`,
+          [repository.id, user.id, permission],
+          function (err) {
+            if (err) {
+              console.error('Error adding collaborator:', err);
+              return res.status(500).json({ error: 'Failed to add collaborator' });
+            }
+
+            res.json({ message: `${username} added as collaborator` });
+          }
+        );
+      });
+    }
+  );
+});
+
+// Get collaborators
+router.get('/:owner/:repo/collaborators', async (req, res) => {
+  const { owner, repo } = req.params;
+
+  db.get(
+    `SELECT r.* FROM repositories r
+     LEFT JOIN users u ON r.owner_id = u.id AND r.owner_type = 'user'
+     LEFT JOIN organizations o ON r.owner_id = o.id AND r.owner_type = 'org'
+     WHERE r.name = ? AND (u.username = ? OR o.name = ?)`,
+    [repo, owner, owner],
+    (err, repository) => {
+      if (err || !repository) {
+        return res.status(404).json({ error: 'Repository not found' });
+      }
+
+      db.all(
+        `SELECT u.username, u.email, c.permission, c.created_at
+         FROM repo_collaborators c
+         JOIN users u ON c.user_id = u.id
+         WHERE c.repo_id = ?`,
+        [repository.id],
+        (err, collaborators) => {
+          if (err) {
+            console.error('Error getting collaborators:', err);
+            return res.status(500).json({ error: 'Failed to get collaborators' });
+          }
+
+          res.json({ collaborators: collaborators || [] });
+        }
+      );
+    }
+  );
+});
+
+module.exports = router;
