@@ -170,8 +170,12 @@ router.get('/:owner/:repo/tree/:branch', async (req, res) => {
         
         if (stats.isDirectory()) {
           const files = fs.readdirSync(fullPath);
+          
+          // Filter out git internals
+          const gitInternals = ['.git', 'HEAD', 'config', 'description', 'hooks', 'info', 'objects', 'refs', 'packed-refs'];
+          
           const tree = files
-            .filter(f => !f.startsWith('.git'))
+            .filter(f => !gitInternals.includes(f))
             .map(file => {
               const filePath = path.join(fullPath, file);
               const fileStats = fs.statSync(filePath);

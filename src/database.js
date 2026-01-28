@@ -27,10 +27,43 @@ function initDatabase() {
         password TEXT NOT NULL,
         role TEXT DEFAULT 'user',
         is_admin INTEGER DEFAULT 0,
+        is_banned INTEGER DEFAULT 0,
+        ban_reason TEXT,
+        banned_at DATETIME,
+        banned_by INTEGER,
         dob TEXT,
         country TEXT,
         can_use_high_power_clusters INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (banned_by) REFERENCES users(id)
+      )
+    `);
+
+    // IP Bans table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS ip_bans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ip_address TEXT UNIQUE NOT NULL,
+        reason TEXT,
+        banned_by INTEGER NOT NULL,
+        banned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        expires_at DATETIME,
+        FOREIGN KEY (banned_by) REFERENCES users(id)
+      )
+    `);
+
+    // Ban history table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS ban_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        ip_address TEXT,
+        action TEXT NOT NULL,
+        reason TEXT,
+        performed_by INTEGER NOT NULL,
+        performed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (performed_by) REFERENCES users(id)
       )
     `);
 

@@ -33,6 +33,10 @@ const editorRoutes = require('./routes/editor');
 const searchRoutes = require('./routes/search');
 const exploreRoutes = require('./routes/explore');
 const notificationsRoutes = require('./routes/notifications');
+const bansRoutes = require('./routes/bans');
+
+// Import middleware
+const { checkIpBan } = require('./middleware/ban');
 
 // Import services
 const ClusterDiscovery = require('./services/cluster-discovery');
@@ -51,6 +55,9 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// IP ban check middleware (applied globally)
+app.use(checkIpBan);
 
 // Serve built React app from dist folder
 const distPath = path.join(__dirname, '../dist');
@@ -120,6 +127,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/explore', exploreRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/bans', bansRoutes);
 app.use('/api', issuesRoutes);
 app.use('/api', pullsRoutes);
 app.use('/api', commitsRoutes);

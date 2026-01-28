@@ -50,6 +50,7 @@ function isAdminOrModerator(req, res, next) {
 module.exports = {
   authenticateToken,
   isAdmin,
+  requireAdmin: isAdmin, // Alias for consistency
   isModerator,
   isAdminOrModerator
 };
