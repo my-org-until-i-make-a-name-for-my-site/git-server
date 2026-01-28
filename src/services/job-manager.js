@@ -14,6 +14,7 @@ class JobManager {
 
   async ensureJobsDirectory() {
     await fs.ensureDir(JOBS_BASE_PATH);
+    console.log(`Jobs directory: ${JOBS_BASE_PATH}`);
   }
 
   async createJob(config) {

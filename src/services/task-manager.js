@@ -80,13 +80,16 @@ class TaskManager {
       createdAt: Date.now(),
       clusterId: null,
       result: null,
-      error: null
+      error: null,
+      userId: options.userId || null,
+      requireHighPower: options.requireHighPower || false
     };
 
     this.tasks.set(taskId, task);
 
     // Find best cluster or use local
-    const cluster = this.clusterDiscovery ? this.clusterDiscovery.getBestCluster() : null;
+    const cluster = this.clusterDiscovery ? 
+      this.clusterDiscovery.getBestCluster(task.requireHighPower) : null;
     
     if (cluster && options.allowCluster !== false) {
       task.clusterId = cluster.id;

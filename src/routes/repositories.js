@@ -10,6 +10,7 @@ const REPOS_BASE_PATH = process.env.REPOS_BASE_PATH || './repos';
 
 // Ensure repos directory exists
 fs.ensureDirSync(REPOS_BASE_PATH);
+console.log(`Repositories directory: ${REPOS_BASE_PATH}`);
 
 // Create repository
 router.post('/', authenticateToken, async (req, res) => {
