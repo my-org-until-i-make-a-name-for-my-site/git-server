@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs-extra');
 const path = require('path');
 const git = require('isomorphic-git');
+const simpleGit = require('simple-git');
 const db = require('../database');
 const { authenticateToken } = require('../middleware/auth');
 
@@ -79,31 +80,52 @@ router.post('/', authenticateToken, async (req, res) => {
     // Create directory
     await fs.ensureDir(repoPath);
 
-    // Initialize git repository with compression
-    await git.init({ 
-      fs, 
-      dir: repoPath, 
-      bare: true,
-      defaultBranch: 'main'
-    });
+    // Initialize git repository using native git command for full compatibility
+    const gitInstance = simpleGit(repoPath);
+    await gitInstance.init(['--bare', '--initial-branch=main']);
 
-    // Configure compression for the repo
-    const configPath = path.join(repoPath, 'config');
-    let configContent = await fs.readFile(configPath, 'utf8');
-    
-    // Add compression settings
-    if (!configContent.includes('[core]')) {
-      configContent += '\n[core]\n';
+    // Configure compression and other settings
+    await gitInstance.addConfig('core.compression', '9');
+    await gitInstance.addConfig('core.looseCompression', '9');
+    await gitInstance.addConfig('pack.compression', '9');
+    await gitInstance.addConfig('pack.deltaCacheSize', '512m');
+    await gitInstance.addConfig('pack.packSizeLimit', '512m');
+    await gitInstance.addConfig('pack.windowMemory', '512m');
+    await gitInstance.addConfig('receive.denyNonFastForwards', 'false');
+    await gitInstance.addConfig('receive.denyDeletes', 'false');
+
+    // Create description file
+    const descPath = path.join(repoPath, 'description');
+    await fs.writeFile(descPath, description || `${name} repository\n`);
+
+    // Create initial README in a temp directory and push to bare repo
+    const tempDir = path.join(repoPath, '..', `.temp-${name}`);
+    try {
+      await fs.ensureDir(tempDir);
+      const tempGit = simpleGit(tempDir);
+      
+      // Initialize non-bare repo
+      await tempGit.init();
+      await tempGit.addConfig('user.name', req.user.username);
+      await tempGit.addConfig('user.email', req.user.email || 'user@codara.dev');
+      
+      // Create initial README
+      const readmePath = path.join(tempDir, 'README.md');
+      await fs.writeFile(readmePath, `# ${name}\n\n${description || 'A new repository on Codara'}\n`);
+      
+      // Commit and push to bare repo
+      await tempGit.add('README.md');
+      await tempGit.commit('Initial commit');
+      await tempGit.addRemote('origin', repoPath);
+      await tempGit.push(['origin', 'main']);
+      
+      // Clean up temp directory
+      await fs.remove(tempDir);
+    } catch (initError) {
+      console.error('Error creating initial README:', initError);
+      // Continue even if README creation fails
+      await fs.remove(tempDir).catch(() => {});
     }
-    configContent += '\tcompression = 9\n';
-    configContent += '\tlooseCompression = 9\n';
-    configContent += '[pack]\n';
-    configContent += '\tcompression = 9\n';
-    configContent += '\tdeltaCacheSize = 512m\n';
-    configContent += '\tpackSizeLimit = 512m\n';
-    configContent += '\twindowMemory = 512m\n';
-    
-    await fs.writeFile(configPath, configContent);
 
     // Save to database
     db.run(
