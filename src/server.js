@@ -59,16 +59,12 @@ app.use(cookieParser());
 // IP ban check middleware (applied globally)
 app.use(checkIpBan);
 
-// Serve built React app from dist folder
-const distPath = path.join(__dirname, '../dist');
-if (require('fs').existsSync(distPath)) {
-  app.use(express.static(distPath));
-  console.log('Serving React app from dist/');
-} else {
-  // Fallback to old public folder
-  app.use(express.static(path.join(__dirname, '../public')));
-  console.log('Serving from public/ (dist/ not found)');
-}
+app.use(express.static(path.join(__dirname, '../dist')));
+
+  // Handle React routing - return index.html for all routes
+app.get(/^(?!\/api\/).*/, (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
 
 // Initialize services
 let clusterDiscovery = null;
