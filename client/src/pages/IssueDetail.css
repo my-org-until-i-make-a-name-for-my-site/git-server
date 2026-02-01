@@ -1,0 +1,308 @@
+.issue-detail-page {
+    min-height: 100vh;
+    background: var(--bg-primary);
+}
+
+.issue-detail-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.issue-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.issue-breadcrumb a {
+    color: var(--text-link);
+    text-decoration: none;
+}
+
+.issue-breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.issue-header {
+    margin-bottom: 2rem;
+}
+
+.issue-title-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.issue-title-text {
+    flex: 1;
+    margin: 0;
+    font-size: 2rem;
+    color: var(--text-primary);
+    word-break: break-word;
+}
+
+.issue-state-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.issue-state-badge svg {
+    width: 16px;
+    height: 16px;
+}
+
+.issue-state-badge.open {
+    background: #238636;
+    color: white;
+}
+
+.issue-state-badge.closed {
+    background: #8957e5;
+    color: white;
+}
+
+.issue-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.issue-number {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.issue-author a {
+    color: var(--text-link);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.issue-author a:hover {
+    text-decoration: underline;
+}
+
+.issue-content-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 2rem;
+}
+
+.issue-main-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.issue-body-card,
+.comment-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.comment-header {
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0.75rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.comment-author-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.comment-author {
+    color: var(--text-primary);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.comment-author:hover {
+    text-decoration: underline;
+    color: var(--text-link);
+}
+
+.comment-date {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.comment-body {
+    padding: 1rem;
+    color: var(--text-primary);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.comment-body em {
+    color: var(--text-secondary);
+}
+
+.comments-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.new-comment-section h3 {
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+}
+
+.comment-form {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.comment-textarea {
+    width: 100%;
+    padding: 1rem;
+    background: var(--bg-primary);
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 1rem;
+    resize: vertical;
+    min-height: 120px;
+}
+
+.comment-textarea:focus {
+    outline: none;
+}
+
+.comment-actions {
+    padding: 1rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.comment-submit-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--button-primary-bg);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.comment-submit-btn:hover {
+    background: var(--button-primary-hover);
+}
+
+.comment-submit-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.issue-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.sidebar-section h3 {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    margin: 0 0 0.75rem 0;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.sidebar-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.sidebar-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.close-btn {
+    background: transparent;
+    color: var(--text-primary);
+}
+
+.close-btn:hover {
+    background: #da3633;
+    color: white;
+    border-color: #da3633;
+}
+
+.reopen-btn {
+    background: transparent;
+    color: var(--text-primary);
+}
+
+.reopen-btn:hover {
+    background: #238636;
+    color: white;
+    border-color: #238636;
+}
+
+.participants-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.participant {
+    color: var(--text-link);
+    text-decoration: none;
+    font-size: 0.95rem;
+}
+
+.participant:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 968px) {
+    .issue-content-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .issue-sidebar {
+        order: -1;
+    }
+}

@@ -1,0 +1,464 @@
+.pr-detail-page {
+    min-height: 100vh;
+    background: var(--bg-primary);
+}
+
+.pr-detail-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.pr-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.pr-breadcrumb a {
+    color: var(--text-link);
+    text-decoration: none;
+}
+
+.pr-breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.pr-header {
+    margin-bottom: 1.5rem;
+}
+
+.pr-title-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.pr-title-text {
+    flex: 1;
+    margin: 0;
+    font-size: 2rem;
+    color: var(--text-primary);
+    word-break: break-word;
+}
+
+.pr-state-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.pr-state-badge svg {
+    width: 16px;
+    height: 16px;
+}
+
+.pr-state-badge.open {
+    background: #238636;
+    color: white;
+}
+
+.pr-state-badge.merged {
+    background: #8957e5;
+    color: white;
+}
+
+.pr-state-badge.closed {
+    background: #da3633;
+    color: white;
+}
+
+.pr-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin-bottom: 0.75rem;
+}
+
+.pr-number {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.pr-author a {
+    color: var(--text-link);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.pr-author a:hover {
+    text-decoration: underline;
+}
+
+.pr-branches {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.95rem;
+}
+
+.pr-branches svg {
+    width: 16px;
+    height: 16px;
+    color: var(--text-secondary);
+}
+
+.branch-name {
+    padding: 0.25rem 0.5rem;
+    background: var(--bg-primary);
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    color: var(--text-link);
+}
+
+.branch-arrow {
+    margin: 0 0.5rem;
+    color: var(--text-secondary);
+}
+
+.pr-tabs {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 2rem;
+}
+
+.pr-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1rem;
+}
+
+.pr-tab svg {
+    width: 16px;
+    height: 16px;
+}
+
+.pr-tab:hover {
+    color: var(--text-primary);
+}
+
+.pr-tab.active {
+    color: var(--text-link);
+    border-bottom-color: var(--text-link);
+}
+
+.pr-content-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 2rem;
+}
+
+.pr-main-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.pr-body-card,
+.comment-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.comment-header {
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0.75rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.comment-author-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.comment-author {
+    color: var(--text-primary);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.comment-author:hover {
+    text-decoration: underline;
+    color: var(--text-link);
+}
+
+.comment-date {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.comment-body {
+    padding: 1rem;
+    color: var(--text-primary);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.comment-body em {
+    color: var(--text-secondary);
+}
+
+.merge-box {
+    background: var(--bg-secondary);
+    border: 2px solid #238636;
+    border-radius: 8px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.merge-status {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.merge-status svg {
+    width: 24px;
+    height: 24px;
+    color: #238636;
+    flex-shrink: 0;
+}
+
+.merge-status-text strong {
+    color: var(--text-primary);
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.merge-status-text p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.merge-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: #238636;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.merge-btn:hover:not(:disabled) {
+    background: #2ea043;
+}
+
+.merge-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.merge-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.comments-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.new-comment-section h3 {
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+}
+
+.comment-form {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.comment-textarea {
+    width: 100%;
+    padding: 1rem;
+    background: var(--bg-primary);
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 1rem;
+    resize: vertical;
+    min-height: 120px;
+}
+
+.comment-textarea:focus {
+    outline: none;
+}
+
+.comment-actions {
+    padding: 1rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.comment-submit-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--button-primary-bg);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.comment-submit-btn:hover {
+    background: var(--button-primary-hover);
+}
+
+.comment-submit-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.files-changed-section {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 2rem;
+}
+
+.files-placeholder {
+    color: var(--text-secondary);
+    text-align: center;
+    margin: 0;
+}
+
+.pr-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.sidebar-section h3 {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    margin: 0 0 0.75rem 0;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.sidebar-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sidebar-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.sidebar-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.approve-btn {
+    background: transparent;
+    color: var(--text-primary);
+}
+
+.approve-btn:hover {
+    background: #238636;
+    color: white;
+    border-color: #238636;
+}
+
+.changes-btn {
+    background: transparent;
+    color: var(--text-primary);
+}
+
+.changes-btn:hover {
+    background: #d29922;
+    color: white;
+    border-color: #d29922;
+}
+
+.close-btn {
+    background: transparent;
+    color: var(--text-primary);
+}
+
+.close-btn:hover {
+    background: #da3633;
+    color: white;
+    border-color: #da3633;
+}
+
+.sidebar-placeholder {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+@media (max-width: 968px) {
+    .pr-content-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .pr-sidebar {
+        order: -1;
+    }
+}
