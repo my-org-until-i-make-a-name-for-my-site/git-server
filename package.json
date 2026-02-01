@@ -4,7 +4,7 @@
   "description": "Codara - Self-hosted Git platform with distributed clusters, CI/CD, and VSCode integration",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
+    "start": "npm run build:client && node src/server.js",
     "dev": "node src/server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:client": "cd client && npm run build",

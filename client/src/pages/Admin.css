@@ -203,3 +203,9 @@ tbody tr:last-child td {
 .action-btn.primary:hover {
   background: var(--button-primary-hover);
 }
+
+.repo-link {
+  text-decoration: none;
+  color: inherit;
+  text-underline-offset: none;
+}

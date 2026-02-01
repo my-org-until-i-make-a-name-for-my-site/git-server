@@ -36,7 +36,7 @@ function Header({ user, logout }) {
           <Link to={`/profile/${user.username}`} className="user-link">
             {user.username}
             {user.role === 'admin' && <span className="badge">Admin</span>}
-            {user.role === 'moderator' && <span className="badge mod">Mod</span>}
+            {user.role === 'moderator' && <span className="badge mod">Moderator</span>}
           </Link>
           <button onClick={logout} className="logout-btn">Logout</button>
         </div>

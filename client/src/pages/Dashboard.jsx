@@ -16,7 +16,7 @@ function Dashboard({ user, logout }) {
   const loadRepositories = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('/api/repositories/my', {
+      const response = await fetch(`/api/repositories/my`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await response.json()
@@ -54,6 +54,42 @@ function Dashboard({ user, logout }) {
       console.error('Failed to create repository:', err)
     }
   }
+
+  const createOrganization = async (e) => {
+    e.preventDefault()
+    await fetch('/api/organizations', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name: newOrgName })
+    })
+    setShowCreateOrgModal(false)
+    setNewOrgName('')
+    loadRepositories()
+  }
+
+  const loadOrganizations = async () => {
+    try {
+        const token = localStorage.getItem('token')
+        const response = await fetch('/api/organizations', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+        const data = await response.json()
+        setOrganizations(data.organizations || [])
+    } catch (err) {
+        console.error('Failed to load organizations:', err)
+    }
+    }
+
+    useEffect(() => {
+        loadOrganizations()
+    }, [])
+
+    const [organizations, setOrganizations] = useState([])
+    const [showCreateOrgModal, setShowCreateOrgModal] = useState(false)
+    const [newOrgName, setNewOrgName] = useState('')
 
   return (
     <div className="dashboard">
@@ -105,6 +141,34 @@ function Dashboard({ user, logout }) {
         )}
       </div>
 
+      <div class="organizations-section">
+        <div className="dashboard-header">
+            <h2>      Your Organizations</h2>
+            <button className="btn-primary" onClick={() => setShowCreateOrgModal(true)}>
+                + New Organization
+            </button>
+        </div>
+          {organizations.map(org => (
+                <div key={org.id} className="org-card">
+                    <div className="org-header">
+                        <Link to={`/org/${org.name}`} className="org-name">
+                            {org.display_name || org.name}
+                        </Link>
+                    </div>
+                    <p className="org-description">{org.description || 'No description'}</p>
+                    <div className="org-meta">
+                        <span>Members: {org.member_count || 0}</span>
+                        <span>Created {new Date(org.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <div className="org-actions">
+                        <Link to={`/org/${org.name}`} className="btn-small">
+                            View Organization
+                        </Link>
+                    </div>
+                </div>
+            ))}
+        </div>
+
       {showCreateModal && (
         <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -142,6 +206,34 @@ function Dashboard({ user, logout }) {
           </div>
         </div>
       )}
+        {showCreateOrgModal && (
+        <div className="modal-overlay" onClick={() => setShowCreateOrgModal(false)}>
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
+                <h3>Create New Organization</h3>
+                <form onSubmit={createOrganization}>
+                    <div className="form-group">
+                        <label>Organization Name</label>
+                        <input
+                            type="text"
+                            value={newOrgName}
+                            onChange={(e) => setNewOrgName(e.target.value)}
+                            required
+                            pattern="[a-zA-Z0-9-_]+"
+                            placeholder="my-organization"
+                        />
+                    </div>
+                    <div className="modal-actions">
+                        <button type="button" className="btn-secondary" onClick={() => setShowCreateOrgModal(false)}>
+                            Cancel
+                        </button>
+                        <button type="submit" className="btn-primary">
+                            Create Organization
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        )}
     </div>
   )
 }

@@ -98,6 +98,10 @@ function App() {
             element={user ? <Repository user={user} logout={logout} /> : <Navigate to="/login" />} 
           />
           <Route 
+            path="/:owner/:repo.git"
+            element={user ? <Repository user={user} logout={logout} /> : <Navigate to="/login" />}
+            />
+          <Route 
             path="/:owner/:repo/files" 
             element={user ? <FileBrowser user={user} logout={logout} /> : <Navigate to="/login" />} 
           />

@@ -301,7 +301,7 @@ class ClusterAgent {
     };
   }
 
-  async executeTask(task) {
+  async function executeTask(task) {
     return new Promise((resolve, reject) => {
       const env = { ...process.env, ...task.env };
       
@@ -370,7 +370,7 @@ class ClusterAgent {
     });
   }
 
-  async executeJob(task) {
+  async function executeJob(task) {
     const fs = require('fs');
     const path = require('path');
 
@@ -498,7 +498,7 @@ class ClusterAgent {
     });
   }
 
-  broadcastTaskUpdate(taskId, event, data) {
+  function broadcastTaskUpdate(taskId, event, data) {
     const message = JSON.stringify({
       type: 'task_update',
       taskId,

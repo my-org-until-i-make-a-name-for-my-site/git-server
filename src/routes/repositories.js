@@ -114,10 +114,11 @@ router.post('/', authenticateToken, async (req, res) => {
       await fs.writeFile(readmePath, `# ${name}\n\n${description || 'A new repository on Codara'}\n`);
       
       // Commit and push to bare repo
+      await tempGit.addRemote('origin', `${req.protocol || 'http'}://localhost:${process.env.PORT || 3000}/${ownerPath}/${name}.git`);
       await tempGit.add('README.md');
       await tempGit.commit('Initial commit');
-      await tempGit.addRemote('origin', repoPath);
-      await tempGit.push(['origin', 'main']);
+      
+      await tempGit.push(['-u', 'origin', 'main']);
       
       // Clean up temp directory
       await fs.remove(tempDir);
@@ -148,7 +149,7 @@ router.post('/', authenticateToken, async (req, res) => {
             owner: ownerPath,
             path: repoPath,
             is_private,
-            clone_url: `http://localhost:${process.env.PORT || 3000}/git/${ownerPath}/${name}`
+            clone_url: `http://localhost:${process.env.PORT || 3000}/${ownerPath}/${name}.git`
           }
         });
       }
@@ -162,7 +163,7 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // Get repositories for user
-router.get('/', authenticateToken, (req, res) => {
+router.get('/my', authenticateToken, (req, res) => {
   const userId = req.user.id;
   const username = req.user.username;
 
@@ -184,7 +185,7 @@ router.get('/', authenticateToken, (req, res) => {
 
       const reposWithUrls = repos.map(repo => ({
         ...repo,
-        clone_url: `http://localhost:${process.env.PORT || 3000}/git/${repo.owner_name}/${repo.name}`
+        clone_url: `http://localhost:${process.env.PORT || 3000}/${repo.owner_name}/${repo.name}.git`
       }));
 
       res.json({ repositories: reposWithUrls });
@@ -217,7 +218,7 @@ router.get('/:owner/:repo', authenticateToken, (req, res) => {
       res.json({
         repository: {
           ...repository,
-          clone_url: `http://localhost:${process.env.PORT || 3000}/git/${owner}/${repo}`
+          clone_url: `http://localhost:${process.env.PORT || 3000}/${owner}/${repo}.git`
         }
       });
     }

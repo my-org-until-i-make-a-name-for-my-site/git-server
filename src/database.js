@@ -105,7 +105,9 @@ function initDatabase() {
         owner_id INTEGER NOT NULL,
         path TEXT UNIQUE NOT NULL,
         is_private INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (owner_id) REFERENCES users(id)
       )
     `);
 

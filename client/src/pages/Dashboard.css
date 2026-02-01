@@ -216,3 +216,102 @@
   justify-content: flex-end;
   margin-top: 20px;
 }
+
+.modal-actions .btn-primary {
+  background: #238636;
+}
+
+.modal-actions .btn-primary:hover {
+  background: #2ea043;
+}
+
+.modal-actions .btn-secondary {
+  background: #21262d;
+}
+
+.modal-actions .btn-secondary:hover {
+  background: #30363d;
+}
+
+.organization-card {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 16px;
+  transition: border-color 0.2s;
+}
+
+.organization-card:hover {
+  border-color: #58a6ff;
+}
+
+.organization-name {
+  color: #58a6ff;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.organization-name:hover {
+  text-decoration: underline;
+}
+
+.organization-description {
+  color: #8b949e;
+  font-size: 14px;
+  margin-top: 8px;
+  min-height: 20px;
+}
+
+.organizations-section {
+  margin-top: 40px;
+}
+
+.user-badge {
+  display: inline-block;
+  padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.user-badge.member {
+  background: #6e7681;
+  color: white;
+}
+
+.user-badge.owner {
+  background: #238636;
+  color: white;
+}
+
+.user-badge.viewer {
+  background: #57606a;
+  color: white;
+}
+
+.user-badge.contributor {
+  background: #1f6feb;
+  color: white;
+}
+
+.user-badge.collaborator {
+  background: #8250df;
+  color: white;
+}
+
+.user-badge.maintainer {
+  background: #a371f7;
+  color: white;
+}
+
+.user-badge.trusted {
+  background: #2da44e;
+  color: white;
+}
+
+.user-badge.untrusted {
+  background: #bf4c28;
+  color: white;
+}
