@@ -114,7 +114,7 @@ router.post('/', authenticateToken, async (req, res) => {
       await fs.writeFile(readmePath, `# ${name}\n\n${description || 'A new repository on Codara'}\n`);
       
       // Commit and push to bare repo
-      await tempGit.addRemote('origin', `${req.protocol || 'http'}://localhost:${process.env.PORT || 3000}/${ownerPath}/${name}.git`);
+      await tempGit.addRemote('origin', `${req.protocol || 'http'}://localhost:${process.env.PORT || 3000}/git/${ownerPath}/${name}.git`);
       await tempGit.add('README.md');
       await tempGit.commit('Initial commit');
       

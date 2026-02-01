@@ -513,7 +513,7 @@ class ClusterAgent {
       }
     });
   }
-}
+
 
 // Start the agent
 const agent = new ClusterAgent();

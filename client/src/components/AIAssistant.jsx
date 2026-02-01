@@ -8,12 +8,23 @@ function AIAssistant({ user }) {
     const [response, setResponse] = useState('')
     const [loading, setLoading] = useState(false)
     const [usage, setUsage] = useState(0)
+    const [chats, setChats] = useState([])
+    const [activeChatId, setActiveChatId] = useState(null)
+    const [messages, setMessages] = useState([])
+    const [attachments, setAttachments] = useState([])
 
     useEffect(() => {
         if (isOpen) {
             loadUsage()
+            loadChats()
         }
     }, [isOpen])
+
+    useEffect(() => {
+        if (activeChatId) {
+            loadChat(activeChatId)
+        }
+    }, [activeChatId])
 
     const loadUsage = async () => {
         try {
@@ -27,6 +38,70 @@ function AIAssistant({ user }) {
             console.error('Failed to load usage:', err)
         }
     }
+
+    const loadChats = async () => {
+        try {
+            const token = localStorage.getItem('token')
+            const res = await fetch('/api/ai/chats', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            const data = await res.json()
+            setChats(data.chats || [])
+            if (!activeChatId && data.chats?.length > 0) {
+                setActiveChatId(data.chats[0].id)
+            }
+        } catch (err) {
+            console.error('Failed to load chats:', err)
+        }
+    }
+
+    const loadChat = async (chatId) => {
+        try {
+            const token = localStorage.getItem('token')
+            const res = await fetch(`/api/ai/chats/${chatId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            const data = await res.json()
+            setMessages(data.messages || [])
+        } catch (err) {
+            console.error('Failed to load chat:', err)
+        }
+    }
+
+    const createChat = async () => {
+        try {
+            const token = localStorage.getItem('token')
+            const res = await fetch('/api/ai/chats', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ title: 'New Chat' })
+            })
+            const data = await res.json()
+            if (data.chat) {
+                setChats(prev => [data.chat, ...prev])
+                setActiveChatId(data.chat.id)
+                setMessages([])
+                return data.chat.id
+            }
+        } catch (err) {
+            console.error('Failed to create chat:', err)
+        }
+        return null
+    }
+
+    const fileToBase64 = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => {
+            const result = reader.result || ''
+            const base64 = typeof result === 'string' ? result.split(',')[1] || '' : ''
+            resolve(base64)
+        }
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+    })
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -42,23 +117,57 @@ function AIAssistant({ user }) {
 
         setLoading(true)
         try {
-            // Call pollinations API
-            const imageUrl = `https://text.pollinations.ai/${encodeURIComponent(prompt)}`
-
-            // Update usage in backend
             const token = localStorage.getItem('token')
-            await fetch('/api/settings/usage', {
+            const attachmentPayload = await Promise.all(
+                attachments.map(async (file) => ({
+                    name: file.name,
+                    mime_type: file.type || 'application/octet-stream',
+                    data: await fileToBase64(file)
+                }))
+            )
+
+            let chatId = activeChatId
+            if (!chatId) {
+                chatId = await createChat()
+            }
+            if (!chatId) {
+                setResponse('Error: Unable to create chat')
+                return
+            }
+
+            const res = await fetch(`/api/ai/chats/${chatId}/messages`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ usage: promptUsage })
+                body: JSON.stringify({
+                    message: prompt,
+                    attachments: attachmentPayload
+                })
             })
+            const data = await res.json()
 
-            setResponse(imageUrl)
-            setUsage(prev => prev + promptUsage)
-            setPrompt('')
+            if (res.ok) {
+                setMessages(prev => ([
+                    ...prev,
+                    {
+                        id: `local-${Date.now()}`,
+                        role: 'user',
+                        content: prompt,
+                        attachments: attachmentPayload
+                    },
+                    data.message
+                ]))
+                setResponse(data.message?.content || '')
+                setUsage(prev => prev + promptUsage)
+                setPrompt('')
+                setAttachments([])
+                loadChats()
+                loadUsage()
+            } else {
+                setResponse(data.error || 'Error: Failed to generate response')
+            }
         } catch (err) {
             console.error('AI request failed:', err)
             setResponse('Error: Failed to generate response')
@@ -76,6 +185,27 @@ function AIAssistant({ user }) {
             {isOpen && (
                 <div className="ai-assistant-modal">
                     <div className="ai-assistant-content">
+                        <div className="ai-chat-list">
+                            <div className="ai-chat-list-header">
+                                <h4>Chats</h4>
+                                <button className="ai-new-chat-btn" onClick={createChat}>New</button>
+                            </div>
+                            <div className="ai-chat-items">
+                                {chats.length === 0 ? (
+                                    <div className="ai-chat-empty">No chats yet</div>
+                                ) : (
+                                    chats.map(chat => (
+                                        <button
+                                            key={chat.id}
+                                            className={`ai-chat-item ${activeChatId === chat.id ? 'active' : ''}`}
+                                            onClick={() => setActiveChatId(chat.id)}
+                                        >
+                                            {chat.title}
+                                        </button>
+                                    ))
+                                )}
+                            </div>
+                        </div>
                         <div className="ai-assistant-header">
                             <div className="ai-assistant-title">
                                 <SparkleIcon />
@@ -99,6 +229,28 @@ function AIAssistant({ user }) {
                             </div>
                         </div>
 
+                        <div className="ai-chat-messages">
+                            {messages.length === 0 ? (
+                                <div className="ai-chat-empty">Start a conversation to see messages here.</div>
+                            ) : (
+                                messages.map(msg => (
+                                    <div key={msg.id} className={`ai-chat-message ${msg.role}`}>
+                                        <div className="ai-chat-role">{msg.role === 'assistant' ? 'Assistant' : 'You'}</div>
+                                        <div className="ai-chat-content">{msg.content}</div>
+                                        {msg.attachments && msg.attachments.length > 0 && (
+                                            <div className="ai-chat-attachments">
+                                                {msg.attachments.map(att => (
+                                                    <div key={att.id || att.name} className="ai-chat-attachment">
+                                                        {att.name}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
                         <form onSubmit={handleSubmit} className="ai-assistant-form">
                             <textarea
                                 className="ai-prompt-input"
@@ -107,6 +259,20 @@ function AIAssistant({ user }) {
                                 onChange={(e) => setPrompt(e.target.value)}
                                 rows="4"
                             />
+                            <div className="ai-attachments">
+                                <input
+                                    type="file"
+                                    multiple
+                                    onChange={(e) => setAttachments(Array.from(e.target.files || []))}
+                                />
+                                {attachments.length > 0 && (
+                                    <div className="ai-attachment-list">
+                                        {attachments.map(file => (
+                                            <span key={file.name} className="ai-attachment-chip">{file.name}</span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                             <button
                                 type="submit"
                                 className="ai-submit-btn"
@@ -120,11 +286,7 @@ function AIAssistant({ user }) {
                             <div className="ai-response">
                                 <h4>Response:</h4>
                                 <div className="ai-response-content">
-                                    {response.startsWith('http') ? (
-                                        <img src={response} alt="AI Generated" style={{ maxWidth: '100%' }} />
-                                    ) : (
-                                        <p>{response}</p>
-                                    )}
+                                    <p>{response}</p>
                                 </div>
                             </div>
                         )}

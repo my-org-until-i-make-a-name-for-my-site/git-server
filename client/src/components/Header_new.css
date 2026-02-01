@@ -1,0 +1,126 @@
+.header {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    padding: 16px 0;
+}
+
+.header-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-logo {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-link);
+    text-decoration: none;
+}
+
+.header-logo:hover {
+    opacity: 0.8;
+}
+
+.header-nav {
+    display: flex;
+    gap: 24px;
+}
+
+.nav-link {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.nav-link:hover {
+    color: var(--text-link);
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.theme-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    transition: opacity 0.2s;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.theme-toggle svg {
+    width: 20px;
+    height: 20px;
+    color: var(--text-primary);
+}
+
+.theme-toggle:hover {
+    opacity: 0.7;
+}
+
+.settings-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: opacity 0.2s;
+}
+
+.settings-link svg {
+    width: 20px;
+    height: 20px;
+}
+
+.settings-link:hover {
+    opacity: 0.7;
+}
+
+.user-link {
+    color: var(--text-primary);
+    text-decoration: none;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.badge {
+    padding: 2px 8px;
+    background: #238636;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: white;
+}
+
+.badge.mod {
+    background: #1f6feb;
+}
+
+.logout-btn {
+    padding: 6px 16px;
+    background: var(--button-secondary-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.logout-btn:hover {
+    background: var(--button-secondary-hover);
+}

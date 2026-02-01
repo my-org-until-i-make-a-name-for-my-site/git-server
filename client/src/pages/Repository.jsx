@@ -13,6 +13,7 @@ function Repository({ user, logout, tab = 'code' }) {
     const [files, setFiles] = useState([])
     const [branches, setBranches] = useState([])
     const [currentBranch, setCurrentBranch] = useState('main')
+    const [commitsBranch, setCommitsBranch] = useState('main')
     const [loading, setLoading] = useState(true)
     const [showCreateIssueModal, setShowCreateIssueModal] = useState(false)
     const [showCreatePRModal, setShowCreatePRModal] = useState(false)
@@ -34,6 +35,7 @@ function Repository({ user, logout, tab = 'code' }) {
             if (branches.length > 1) {
                 setPrHeadBranch(branches[1] || '')
             }
+            setCommitsBranch(branches[0] || 'main')
         }
     }, [branches])
 
@@ -51,6 +53,12 @@ function Repository({ user, logout, tab = 'code' }) {
             loadFiles()
         }
     }, [currentBranch])
+
+    useEffect(() => {
+        if (activeTab === 'commits') {
+            loadCommits()
+        }
+    }, [commitsBranch])
 
     const loadRepository = async () => {
         try {
@@ -120,7 +128,7 @@ function Repository({ user, logout, tab = 'code' }) {
     const loadCommits = async () => {
         try {
             const token = localStorage.getItem('token')
-            const response = await fetch(`/api/${owner}/${repo}/commits`, {
+            const response = await fetch(`/api/${owner}/${repo}/commits?branch=${encodeURIComponent(commitsBranch)}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const data = await response.json()
@@ -452,14 +460,14 @@ function Repository({ user, logout, tab = 'code' }) {
                                 </div>
                             ) : (
                                 pulls.map(pr => (
-                                    <div key={pr.id} className="pr-item">
+                                    <div key={pr?.id ?? pr?.pr_number ?? pr?.number} className="pr-item">
                                         <div className="pr-title">
-                                            <span className="pr-number">#{pr.number}</span>
-                                            <span className={`pr-state ${pr.state}`}>{pr.state}</span>
-                                            {pr.title}
+                                            <span className="pr-number">#{pr?.number ?? pr?.pr_number ?? '—'}</span>
+                                            <span className={`pr-state ${pr?.state || 'open'}`}>{pr?.state || 'open'}</span>
+                                            {pr?.title}
                                         </div>
                                         <div className="pr-meta">
-                                            {pr.head_branch} → {pr.base_branch} • by {pr.author} • {new Date(pr.created_at).toLocaleDateString()}
+                                            {pr?.head_branch} → {pr?.base_branch} • by {pr?.author ?? pr?.author_name ?? 'unknown'} • {pr?.created_at ? new Date(pr.created_at).toLocaleDateString() : 'unknown date'}
                                         </div>
                                     </div>
                                 ))
@@ -537,6 +545,26 @@ function Repository({ user, logout, tab = 'code' }) {
 
                 {activeTab === 'commits' && (
                     <div>
+                        <div className="code-header">
+                            <h3>Commits</h3>
+                            <div className="branch-selector">
+                                <label htmlFor="commits-branch-select">Branch:</label>
+                                <select
+                                    id="commits-branch-select"
+                                    value={commitsBranch}
+                                    onChange={(e) => setCommitsBranch(e.target.value)}
+                                    className="branch-select"
+                                >
+                                    {branches.length > 0 ? (
+                                        branches.map(branch => (
+                                            <option key={branch} value={branch}>{branch}</option>
+                                        ))
+                                    ) : (
+                                        <option value="main">main</option>
+                                    )}
+                                </select>
+                            </div>
+                        </div>
                         <div className="commit-list">
                             {commits.length === 0 ? (
                                 <div className="empty-state">

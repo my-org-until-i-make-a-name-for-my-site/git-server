@@ -27,64 +27,36 @@ router.get('/:owner/:repo/commits', async (req, res) => {
             try {
                 const offset = (parseInt(page) - 1) * parseInt(per_page);
 
-                // Get commits from database
-                db.all(
-                    `SELECT * FROM commits 
-           WHERE repo_id = ?
-           ORDER BY created_at DESC
-           LIMIT ? OFFSET ?`,
-                    [repository.id, parseInt(per_page), offset],
-                    (err, dbCommits) => {
-                        if (err) {
-                            console.error('Error getting commits from database:', err);
-                            return res.status(500).json({ error: 'Failed to get commits' });
-                        }
+                // Get commits from git with branch filtering
+                const git = simpleGit(repository.path);
+                git.log({
+                    from: branch,
+                    maxCount: parseInt(per_page),
+                    '--skip': offset
+                }).then(log => {
+                    // Store commits in database for future use
+                    log.all.forEach(commit => {
+                        db.run(
+                            `INSERT OR IGNORE INTO commits (repo_id, sha, author_name, author_email, message, created_at) 
+                 VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+                            [repository.id, commit.hash, commit.author_name, commit.author_email, commit.message]
+                        );
+                    });
 
-                        if (!dbCommits || dbCommits.length === 0) {
-                            // Fallback to git if database is empty
-                            const git = simpleGit(repository.path);
-                            git.log({
-                                from: branch,
-                                maxCount: parseInt(per_page),
-                                '--skip': offset
-                            }).then(log => {
-                                // Store commits in database for future use
-                                log.all.forEach(commit => {
-                                    db.run(
-                                        `INSERT OR IGNORE INTO commits (repo_id, sha, author_name, author_email, message, created_at) 
-                     VALUES (?, ?, ?, ?, ?, datetime('now'))`,
-                                        [repository.id, commit.hash, commit.author_name, commit.author_email, commit.message]
-                                    );
-                                });
-
-                                res.json({
-                                    commits: log.all.map(c => ({
-                                        sha: c.hash,
-                                        author_name: c.author_name,
-                                        author_email: c.author_email,
-                                        message: c.message,
-                                        date: c.date,
-                                        hash: c.hash
-                                    }))
-                                });
-                            }).catch(error => {
-                                console.error('Error getting commits from git:', error);
-                                res.status(500).json({ error: 'Failed to get commits' });
-                            });
-                        } else {
-                            res.json({
-                                commits: dbCommits.map(c => ({
-                                    sha: c.sha,
-                                    hash: c.sha,
-                                    author_name: c.author_name,
-                                    author_email: c.author_email,
-                                    message: c.message,
-                                    date: c.created_at
-                                }))
-                            });
-                        }
-                    }
-                );
+                    res.json({
+                        commits: log.all.map(c => ({
+                            sha: c.hash,
+                            author_name: c.author_name,
+                            author_email: c.author_email,
+                            message: c.message,
+                            date: c.date,
+                            hash: c.hash
+                        }))
+                    });
+                }).catch(error => {
+                    console.error('Error getting commits from git:', error);
+                    res.status(500).json({ error: 'Failed to get commits' });
+                });
             } catch (error) {
                 console.error('Error getting commits:', error);
                 res.status(500).json({ error: 'Failed to get commits' });

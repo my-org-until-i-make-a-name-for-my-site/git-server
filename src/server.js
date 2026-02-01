@@ -35,6 +35,8 @@ const searchRoutes = require('./routes/search');
 const exploreRoutes = require('./routes/explore');
 const notificationsRoutes = require('./routes/notifications');
 const bansRoutes = require('./routes/bans');
+const settingsRoutes = require('./routes/settings');
+const aiRoutes = require('./routes/ai');
 
 // Import middleware
 const { checkIpBan } = require('./middleware/ban');
@@ -139,6 +141,8 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/explore', exploreRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/ai', aiRoutes);
 app.use('/api/bans', bansRoutes);
 app.use('/api', issuesRoutes);
 app.use('/api', pullsRoutes);

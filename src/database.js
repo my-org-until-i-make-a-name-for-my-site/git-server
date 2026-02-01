@@ -8,18 +8,18 @@ const dbPath = process.env.DATABASE_PATH || './data/database.sqlite';
 fs.ensureDirSync(path.dirname(dbPath));
 
 const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Error opening database:', err);
-  } else {
-    console.log('Connected to SQLite database');
-    initDatabase();
-  }
+    if (err) {
+        console.error('Error opening database:', err);
+    } else {
+        console.log('Connected to SQLite database');
+        initDatabase();
+    }
 });
 
 function initDatabase() {
-  db.serialize(() => {
-    // Users table
-    db.run(`
+    db.serialize(() => {
+        // Users table
+        db.run(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
@@ -39,8 +39,8 @@ function initDatabase() {
       )
     `);
 
-    // IP Bans table
-    db.run(`
+        // IP Bans table
+        db.run(`
       CREATE TABLE IF NOT EXISTS ip_bans (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         ip_address TEXT UNIQUE NOT NULL,
@@ -52,8 +52,8 @@ function initDatabase() {
       )
     `);
 
-    // Ban history table
-    db.run(`
+        // Ban history table
+        db.run(`
       CREATE TABLE IF NOT EXISTS ban_history (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
@@ -67,8 +67,8 @@ function initDatabase() {
       )
     `);
 
-    // Organizations table
-    db.run(`
+        // Organizations table
+        db.run(`
       CREATE TABLE IF NOT EXISTS organizations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE NOT NULL,
@@ -81,8 +81,8 @@ function initDatabase() {
       )
     `);
 
-    // Organization members
-    db.run(`
+        // Organization members
+        db.run(`
       CREATE TABLE IF NOT EXISTS org_members (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         org_id INTEGER NOT NULL,
@@ -95,8 +95,8 @@ function initDatabase() {
       )
     `);
 
-    // Repositories table
-    db.run(`
+        // Repositories table
+        db.run(`
       CREATE TABLE IF NOT EXISTS repositories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -111,8 +111,8 @@ function initDatabase() {
       )
     `);
 
-    // Repository collaborators
-    db.run(`
+        // Repository collaborators
+        db.run(`
       CREATE TABLE IF NOT EXISTS repo_collaborators (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         repo_id INTEGER NOT NULL,
@@ -125,8 +125,8 @@ function initDatabase() {
       )
     `);
 
-    // User followers
-    db.run(`
+        // User followers
+        db.run(`
       CREATE TABLE IF NOT EXISTS user_followers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -138,8 +138,8 @@ function initDatabase() {
       )
     `);
 
-    // Organization followers
-    db.run(`
+        // Organization followers
+        db.run(`
       CREATE TABLE IF NOT EXISTS org_followers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         org_id INTEGER NOT NULL,
@@ -151,8 +151,8 @@ function initDatabase() {
       )
     `);
 
-    // Issues
-    db.run(`
+        // Issues
+        db.run(`
       CREATE TABLE IF NOT EXISTS issues (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         repo_id INTEGER NOT NULL,
@@ -172,8 +172,8 @@ function initDatabase() {
       )
     `);
 
-    // Issue comments
-    db.run(`
+        // Issue comments
+        db.run(`
       CREATE TABLE IF NOT EXISTS issue_comments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         issue_id INTEGER NOT NULL,
@@ -186,8 +186,8 @@ function initDatabase() {
       )
     `);
 
-    // Pull requests
-    db.run(`
+        // Pull requests
+        db.run(`
       CREATE TABLE IF NOT EXISTS pull_requests (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         repo_id INTEGER NOT NULL,
@@ -213,8 +213,8 @@ function initDatabase() {
       )
     `);
 
-    // PR comments
-    db.run(`
+        // PR comments
+        db.run(`
       CREATE TABLE IF NOT EXISTS pr_comments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         pr_id INTEGER NOT NULL,
@@ -227,8 +227,8 @@ function initDatabase() {
       )
     `);
 
-    // Issue labels
-    db.run(`
+        // Issue labels
+        db.run(`
       CREATE TABLE IF NOT EXISTS labels (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         repo_id INTEGER NOT NULL,
@@ -241,8 +241,8 @@ function initDatabase() {
       )
     `);
 
-    // Issue-Label relationship
-    db.run(`
+        // Issue-Label relationship
+        db.run(`
       CREATE TABLE IF NOT EXISTS issue_labels (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         issue_id INTEGER NOT NULL,
@@ -253,8 +253,8 @@ function initDatabase() {
       )
     `);
 
-    // Commits
-    db.run(`
+        // Commits
+        db.run(`
       CREATE TABLE IF NOT EXISTS commits (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         repo_id INTEGER NOT NULL,
@@ -272,8 +272,8 @@ function initDatabase() {
       )
     `);
 
-    // Push events
-    db.run(`
+        // Push events
+        db.run(`
       CREATE TABLE IF NOT EXISTS push_events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         repo_id INTEGER NOT NULL,
@@ -288,8 +288,8 @@ function initDatabase() {
       )
     `);
 
-    // Repository branches
-    db.run(`
+        // Repository branches
+        db.run(`
       CREATE TABLE IF NOT EXISTS branches (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         repo_id INTEGER NOT NULL,
@@ -303,8 +303,87 @@ function initDatabase() {
       )
     `);
 
-    console.log('Database schema initialized');
-  });
+        // User settings
+        db.run(`
+          CREATE TABLE IF NOT EXISTS user_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL UNIQUE,
+            ai_usage REAL DEFAULT 0,
+            email_notifications INTEGER DEFAULT 1,
+            theme_preference TEXT DEFAULT 'dark',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+          )
+        `);
+
+        // PR reviews
+        db.run(`
+          CREATE TABLE IF NOT EXISTS pr_reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pr_id INTEGER NOT NULL,
+            reviewer_id INTEGER NOT NULL,
+            state TEXT NOT NULL,
+            body TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (pr_id) REFERENCES pull_requests(id),
+            FOREIGN KEY (reviewer_id) REFERENCES users(id)
+          )
+        `);
+
+        // Notifications
+        db.run(`
+          CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            type TEXT NOT NULL,
+            title TEXT NOT NULL,
+            body TEXT,
+            read INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+          )
+        `);
+
+        // AI chats
+        db.run(`
+          CREATE TABLE IF NOT EXISTS ai_chats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+          )
+        `);
+
+        // AI messages
+        db.run(`
+          CREATE TABLE IF NOT EXISTS ai_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chat_id INTEGER NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (chat_id) REFERENCES ai_chats(id)
+          )
+        `);
+
+        // AI attachments
+        db.run(`
+          CREATE TABLE IF NOT EXISTS ai_attachments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            message_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            mime_type TEXT NOT NULL,
+            data TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (message_id) REFERENCES ai_messages(id)
+          )
+        `);
+
+        console.log('Database schema initialized');
+    });
 }
 
 module.exports = db;
