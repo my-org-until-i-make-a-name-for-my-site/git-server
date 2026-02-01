@@ -11,6 +11,8 @@ function Repository({ user, logout, tab = 'code' }) {
     const [pulls, setPulls] = useState([])
     const [commits, setCommits] = useState([])
     const [files, setFiles] = useState([])
+    const [branches, setBranches] = useState([])
+    const [currentBranch, setCurrentBranch] = useState('main')
     const [loading, setLoading] = useState(true)
     const [showCreateIssueModal, setShowCreateIssueModal] = useState(false)
     const [showCreatePRModal, setShowCreatePRModal] = useState(false)
@@ -23,16 +25,32 @@ function Repository({ user, logout, tab = 'code' }) {
     // Form state for PR creation
     const [prTitle, setPrTitle] = useState('')
     const [prBody, setPrBody] = useState('')
-    const [prBaseBranch, setPrBaseBranch] = useState('branch1')
-    const [prHeadBranch, setPrHeadBranch] = useState('branch2')
+    const [prBaseBranch, setPrBaseBranch] = useState('main')
+    const [prHeadBranch, setPrHeadBranch] = useState('')
+
+    useEffect(() => {
+        if (branches.length > 0) {
+            setPrBaseBranch(branches[0] || 'main')
+            if (branches.length > 1) {
+                setPrHeadBranch(branches[1] || '')
+            }
+        }
+    }, [branches])
 
     useEffect(() => {
         loadRepository()
+        loadBranches()
         if (activeTab === 'issues') loadIssues()
         if (activeTab === 'pulls') loadPulls()
         if (activeTab === 'commits') loadCommits()
         if (activeTab === 'code') loadFiles()
     }, [owner, repo, activeTab])
+
+    useEffect(() => {
+        if (activeTab === 'code') {
+            loadFiles()
+        }
+    }, [currentBranch])
 
     const loadRepository = async () => {
         try {
@@ -52,6 +70,22 @@ function Repository({ user, logout, tab = 'code' }) {
             console.error('Failed to load repository:', err)
             setLoading(false)
             setError('Failed to load repository')
+        }
+    }
+
+    const loadBranches = async () => {
+        try {
+            const token = localStorage.getItem('token')
+            const response = await fetch(`/api/${owner}/${repo}/branches`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            const data = await response.json()
+            setBranches(data.branches || [])
+            if (data.current) {
+                setCurrentBranch(data.current)
+            }
+        } catch (err) {
+            console.error('Failed to load branches:', err)
         }
     }
 
@@ -100,7 +134,7 @@ function Repository({ user, logout, tab = 'code' }) {
     const loadFiles = async () => {
         try {
             const token = localStorage.getItem('token')
-            const response = await fetch(`/api/${owner}/${repo}/tree/main/`, {
+            const response = await fetch(`/api/${owner}/${repo}/tree/${currentBranch}/`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const data = await response.json()
@@ -156,6 +190,28 @@ function Repository({ user, logout, tab = 'code' }) {
         } catch (err) {
             console.error('Failed to create pull request:', err)
             setError('Failed to create pull request')
+        }
+    }
+
+    const deleteFile = async (filepath) => {
+        if (!confirm(`Are you sure you want to delete ${filepath}?`)) {
+            return
+        }
+        try {
+            const token = localStorage.getItem('token')
+            const response = await fetch(`/api/${owner}/${repo}/contents/${currentBranch}/${filepath}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            if (response.ok) {
+                loadFiles()
+                alert('File deleted successfully')
+            } else {
+                alert('Failed to delete file')
+            }
+        } catch (err) {
+            console.error('Failed to delete file:', err)
+            alert('Failed to delete file')
         }
     }
 
@@ -251,29 +307,75 @@ function Repository({ user, logout, tab = 'code' }) {
                             </div>
                         </div>
 
-                        <h3>Files</h3>
-                        <div className="file-list">
+                        <div className="code-section">
+                            <div className="code-header">
+                                <h3>Files</h3>
+                                <div className="branch-selector">
+                                    <label htmlFor="branch-select">Branch:</label>
+                                    <select
+                                        id="branch-select"
+                                        value={currentBranch}
+                                        onChange={(e) => setCurrentBranch(e.target.value)}
+                                        className="branch-select"
+                                    >
+                                        {branches.length > 0 ? (
+                                            branches.map(branch => (
+                                                <option key={branch} value={branch}>{branch}</option>
+                                            ))
+                                        ) : (
+                                            <option value="main">main</option>
+                                        )}
+                                    </select>
+                                </div>
+                            </div>
+
                             {files.length === 0 ? (
                                 <div className="empty-state">
                                     <h3>No files yet</h3>
                                     <p>Push some code to get started</p>
                                 </div>
                             ) : (
-                                files.map(file => (
-                                    <div key={file.name} className="file-item">
-                                        {file.type === 'tree' ? 'Folder' : 'File'}: {' '}
-                                        <Link to={`/${owner}/${repo}/files/${file.name}`}>
-                                            {file.name}
-                                        </Link>
+                                <div className="file-browser">
+                                    <div className="file-browser-header">
+                                        <div className="file-col-name">Name</div>
+                                        <div className="file-col-message">Latest commit message</div>
+                                        <div className="file-col-time">Committed</div>
+                                        <div className="file-col-actions">Actions</div>
                                     </div>
-                                ))
+                                    <div className="file-list">
+                                        {files.map((file, index) => (
+                                            <div key={`${file.name}-${index}`} className="file-row">
+                                                <div className="file-col-name">
+                                                    <span className="file-icon">
+                                                        {file.type === 'tree' ? 'Folder' : 'File'}
+                                                    </span>
+                                                    <Link to={`/${owner}/${repo}/files/${file.path}`} className="file-name">
+                                                        {file.name}
+                                                    </Link>
+                                                </div>
+                                                <div className="file-col-message">
+                                                    <span className="commit-info">Initial commit</span>
+                                                </div>
+                                                <div className="file-col-time">
+                                                    <span className="time-ago">just now</span>
+                                                </div>
+                                                <div className="file-col-actions">
+                                                    {file.type === 'blob' && (
+                                                        <button
+                                                            className="delete-file-btn"
+                                                            onClick={() => deleteFile(file.path)}
+                                                            title="Delete file"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             )}
                         </div>
-                        <Link to={`/${owner}/${repo}/files`}>
-                            <button className="create-btn" style={{ marginTop: '1rem' }}>
-                                Browse All Files
-                            </button>
-                        </Link>
                     </div>
                 )}
 
@@ -377,8 +479,8 @@ function Repository({ user, logout, tab = 'code' }) {
                                 setShowCreatePRModal(false);
                                 setPrTitle('');
                                 setPrBody('');
-                                setPrBaseBranch('branch1');
-                                setPrHeadBranch('branch2');
+                                setPrBaseBranch(branches[0] || 'main');
+                                setPrHeadBranch(branches[1] || '');
                             }}>
                                 <label htmlFor="pr-title">Title:</label>
                                 <input
@@ -389,23 +491,35 @@ function Repository({ user, logout, tab = 'code' }) {
                                     onChange={e => setPrTitle(e.target.value)}
                                     required
                                 />
-                                <label htmlFor="pr-base-branch">Base Branch:</label>
+                                <label htmlFor="pr-base-branch">Base Branch (merge into):</label>
                                 <select
                                     id="pr-base-branch"
                                     name="pr-base-branch"
                                     value={prBaseBranch}
                                     onChange={e => setPrBaseBranch(e.target.value)}
                                 >
-                                    <option value="branch1">branch1</option>
+                                    {branches.length > 0 ? (
+                                        branches.map(branch => (
+                                            <option key={branch} value={branch}>{branch}</option>
+                                        ))
+                                    ) : (
+                                        <option value="main">main</option>
+                                    )}
                                 </select>
-                                <label htmlFor="pr-head-branch">Head Branch:</label>
+                                <label htmlFor="pr-head-branch">Head Branch (merge from):</label>
                                 <select
                                     id="pr-head-branch"
                                     name="pr-head-branch"
                                     value={prHeadBranch}
                                     onChange={e => setPrHeadBranch(e.target.value)}
                                 >
-                                    <option value="branch2">branch2</option>
+                                    {branches.length > 0 ? (
+                                        branches.map(branch => (
+                                            <option key={branch} value={branch}>{branch}</option>
+                                        ))
+                                    ) : (
+                                        <option value="main">main</option>
+                                    )}
                                 </select>
                                 <label htmlFor="pr-body">Description:</label>
                                 <textarea

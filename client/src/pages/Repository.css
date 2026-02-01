@@ -482,32 +482,196 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+.code-section {
+    margin-top: 2rem;
+}
+
+.code-header {
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.code-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--text-primary);
+}
+
+.branch-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.branch-selector label {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.branch-select {
+    padding: 5px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.branch-select:hover {
+    border-color: var(--text-link);
+}
+
+.branch-select:focus {
+    outline: none;
+    border-color: var(--text-link);
+    box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.1);
+}
+
+.file-browser {
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--bg-secondary);
+}
+
+.file-browser-header {
+    display: grid;
+    grid-template-columns: 1fr 2fr 200px 100px;
+    gap: 2rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
 .file-list {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    margin-top: 1rem;
+    gap: 0;
 }
 
-.file-item {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
+.file-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr 200px 100px;
+    gap: 2rem;
     padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    align-items: center;
     transition: all 0.2s;
 }
 
-.file-item:hover {
-    border-color: var(--text-link);
-    transform: translateX(4px);
+.file-row:hover {
+    background: var(--bg-hover);
 }
 
-.file-item a {
+.file-row:last-child {
+    border-bottom: none;
+}
+
+.file-col-name {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+.file-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.file-name {
     color: var(--text-link);
     text-decoration: none;
     font-weight: 500;
+    word-break: break-word;
+    transition: all 0.2s;
 }
 
-.file-item a:hover {
+.file-name:hover {
     text-decoration: underline;
+    color: var(--text-link);
+}
+
+.file-col-message {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    word-break: break-word;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.commit-info {
+    color: var(--text-secondary);
+    transition: color 0.2s;
+}
+
+.file-row:hover .commit-info {
+    color: var(--text-primary);
+}
+
+.file-col-time {
+    text-align: right;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.file-col-actions {
+    text-align: center;
+}
+
+.delete-file-btn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.2s;
+}
+
+.delete-file-btn:hover {
+    background: #da3633;
+    border-color: #da3633;
+    transform: scale(1.1);
+}
+
+.time-ago {
+    white-space: nowrap;
+}
+
+/* Update existing file-list styles to not conflict */
+.file-list .file-item {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .file-browser-header {
+        grid-template-columns: 1fr 100px;
+        gap: 1rem;
+    }
+
+    .file-row {
+        grid-template-columns: 1fr 100px;
+        gap: 1rem;
+    }
+
+    .file-col-message,
+    .file-col-time {
+        display: none;
+    }
+
+    .file-col-actions {
+        text-align: left;
+    }
 }
