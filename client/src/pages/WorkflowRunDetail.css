@@ -1,0 +1,72 @@
+.workflow-run-page .container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.breadcrumb {
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+
+.breadcrumb a {
+    color: var(--text-primary);
+    text-decoration: none;
+}
+
+.run-header {
+    margin-bottom: 2rem;
+}
+
+.run-meta {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    color: var(--text-secondary);
+}
+
+.status-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    color: white;
+    font-size: 0.85em;
+    text-transform: capitalize;
+}
+
+.status-badge.completed {
+    background: #28a745;
+}
+
+.status-badge.failed {
+    background: #dc3545;
+}
+
+.status-badge.running {
+    background: #ffc107;
+    color: #1a1a1a;
+}
+
+.job-card {
+    background: var(--card-bg);
+    padding: 1rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 1rem;
+}
+
+.job-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.job-logs {
+    background: var(--input-bg);
+    padding: 1rem;
+    border-radius: 4px;
+    overflow: auto;
+    max-height: 500px;
+    font-size: 0.85em;
+    white-space: pre-wrap;
+}

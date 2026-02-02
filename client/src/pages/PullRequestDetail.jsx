@@ -12,7 +12,7 @@ function PullRequestDetail({ user, logout }) {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [activeTab, setActiveTab] = useState('conversation')
-    const [canMerge, setCanMerge] = useState(true)
+    const [mergeStatus, setMergeStatus] = useState({ mergeable: null, checking: true })
     const [merging, setMerging] = useState(false)
 
     useEffect(() => {
@@ -30,8 +30,10 @@ function PullRequestDetail({ user, logout }) {
             setPr(data.pull_request)
             setLoading(false)
 
-            // Check if can merge (no conflicts)
-            checkMergeability(data.pull_request)
+            // Check if can merge (check for conflicts)
+            if (data.pull_request.state === 'open') {
+                checkMergeability()
+            }
         } catch (err) {
             console.error('Failed to load PR:', err)
             setError('Failed to load pull request')
@@ -39,9 +41,22 @@ function PullRequestDetail({ user, logout }) {
         }
     }
 
-    const checkMergeability = (pullRequest) => {
-        // Simple check - in real implementation, this would check for conflicts
-        setCanMerge(pullRequest.state === 'open')
+    const checkMergeability = async () => {
+        try {
+            const token = localStorage.getItem('token')
+            const response = await fetch(`/api/${owner}/${repo}/pulls/${number}/mergeable`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            const data = await response.json()
+            setMergeStatus({
+                mergeable: data.mergeable,
+                has_conflicts: data.has_conflicts,
+                checking: false
+            })
+        } catch (err) {
+            console.error('Failed to check mergeability:', err)
+            setMergeStatus({ mergeable: false, checking: false })
+        }
     }
 
     const loadComments = async () => {
@@ -80,8 +95,31 @@ function PullRequestDetail({ user, logout }) {
         }
     }
 
+    const deleteComment = async (commentId) => {
+        const confirmDelete = confirm('Delete this comment?')
+        if (!confirmDelete) return
+
+        try {
+            const token = localStorage.getItem('token')
+            const response = await fetch(`/api/${owner}/${repo}/pulls/${number}/comments/${commentId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+
+            if (response.ok) {
+                setComments(comments.filter(c => c.id !== commentId))
+            } else {
+                const data = await response.json()
+                alert(data.error || 'Failed to delete comment')
+            }
+        } catch (err) {
+            console.error('Failed to delete comment:', err)
+            alert('Failed to delete comment')
+        }
+    }
+
     const mergePR = async () => {
-        if (!canMerge || merging) return
+        if (!mergeStatus.mergeable || merging) return
 
         const confirmMerge = confirm(`Are you sure you want to merge pull request #${number}?`)
         if (!confirmMerge) return
@@ -283,26 +321,6 @@ function PullRequestDetail({ user, logout }) {
                                     </div>
                                 </div>
 
-                                {pr.state === 'open' && canMerge && (
-                                    <div className="merge-box">
-                                        <div className="merge-status">
-                                            <CheckIcon />
-                                            <div className="merge-status-text">
-                                                <strong>This branch has no conflicts with the base branch</strong>
-                                                <p>Merging can be performed automatically.</p>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={mergePR}
-                                            className="merge-btn"
-                                            disabled={merging}
-                                        >
-                                            <MergeIcon />
-                                            <span>{merging ? 'Merging...' : 'Merge pull request'}</span>
-                                        </button>
-                                    </div>
-                                )}
-
                                 {comments.length > 0 && (
                                     <div className="comments-section">
                                         {comments.map(comment => (
@@ -316,6 +334,14 @@ function PullRequestDetail({ user, logout }) {
                                                             commented on {new Date(comment.created_at).toLocaleDateString()}
                                                         </span>
                                                     </div>
+                                                    {(comment.author_id === user.id || user.is_admin) && (
+                                                        <button
+                                                            className="comment-delete-btn"
+                                                            onClick={() => deleteComment(comment.id)}
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    )}
                                                 </div>
                                                 <div className="comment-body">
                                                     {comment.body}
@@ -357,6 +383,47 @@ function PullRequestDetail({ user, logout }) {
                     </div>
 
                     <div className="pr-sidebar">
+                        <div className="sidebar-section">
+                            <h3>Merge Status</h3>
+                            {pr.state === 'open' && (
+                                <>
+                                    {mergeStatus.checking ? (
+                                        <p>Checking for conflicts...</p>
+                                    ) : mergeStatus.has_conflicts ? (
+                                        <div className="merge-status-error">
+                                            <p style={{ color: '#dc3545' }}>⚠️ This PR has conflicts</p>
+                                            <p style={{ fontSize: '0.9em' }}>Resolve conflicts before merging</p>
+                                        </div>
+                                    ) : mergeStatus.mergeable ? (
+                                        <div className="merge-status-ok">
+                                            <p style={{ color: '#28a745' }}>✓ Ready to merge</p>
+                                            <button
+                                                onClick={mergePR}
+                                                disabled={merging}
+                                                className="sidebar-btn merge-btn"
+                                                style={{
+                                                    background: '#28a745',
+                                                    color: 'white',
+                                                    width: '100%',
+                                                    marginTop: '0.5rem'
+                                                }}
+                                            >
+                                                <MergeIcon />
+                                                <span>{merging ? 'Merging...' : 'Merge pull request'}</span>
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <p style={{ color: '#ffc107' }}>Unable to check merge status</p>
+                                    )}
+                                </>
+                            )}
+                            {pr.state === 'closed' && pr.merged && (
+                                <div className="merge-status-merged">
+                                    <p style={{ color: '#6f42c1' }}>✓ Merged</p>
+                                </div>
+                            )}
+                        </div>
+
                         <div className="sidebar-section">
                             <h3>Actions</h3>
                             <div className="sidebar-actions">

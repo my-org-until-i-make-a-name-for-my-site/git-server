@@ -14,6 +14,7 @@ import Explore from './pages/Explore'
 import Settings from './pages/Settings'
 import IssueDetail from './pages/IssueDetail'
 import PullRequestDetail from './pages/PullRequestDetail'
+import WorkflowRunDetail from './pages/WorkflowRunDetail'
 
 function App() {
     const [user, setUser] = useState(null)
@@ -135,6 +136,14 @@ function App() {
                     <Route
                         path="/:owner/:repo/commits"
                         element={user ? <Repository user={user} logout={logout} tab="commits" /> : <Navigate to="/login" />}
+                    />
+                    <Route
+                        path="/:owner/:repo/actions"
+                        element={user ? <Repository user={user} logout={logout} tab="actions" /> : <Navigate to="/login" />}
+                    />
+                    <Route
+                        path="/:owner/:repo/actions/runs/:runId"
+                        element={user ? <WorkflowRunDetail user={user} logout={logout} /> : <Navigate to="/login" />}
                     />
                     <Route
                         path="/admin"

@@ -18,6 +18,8 @@ function Repository({ user, logout, tab = 'code' }) {
     const [showCreateIssueModal, setShowCreateIssueModal] = useState(false)
     const [showCreatePRModal, setShowCreatePRModal] = useState(false)
     const [error, setError] = useState(null)
+    const [workflowRuns, setWorkflowRuns] = useState([])
+    const [workflows, setWorkflows] = useState([])
 
     // Form state for issue creation
     const [issueTitle, setIssueTitle] = useState('')
@@ -46,6 +48,7 @@ function Repository({ user, logout, tab = 'code' }) {
         if (activeTab === 'pulls') loadPulls()
         if (activeTab === 'commits') loadCommits()
         if (activeTab === 'code') loadFiles()
+        if (activeTab === 'actions') loadActions()
     }, [owner, repo, activeTab])
 
     useEffect(() => {
@@ -150,6 +153,28 @@ function Repository({ user, logout, tab = 'code' }) {
         } catch (err) {
             console.error('Failed to load files:', err)
             setError('Failed to load files')
+        }
+    }
+
+    const loadActions = async () => {
+        try {
+            const token = localStorage.getItem('token')
+
+            // Load workflows
+            const workflowsRes = await fetch(`/api/${owner}/${repo}/workflows`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            const workflowsData = await workflowsRes.json()
+            setWorkflows(workflowsData.workflows || [])
+
+            // Load workflow runs
+            const runsRes = await fetch(`/api/${owner}/${repo}/actions/runs`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            const runsData = await runsRes.json()
+            setWorkflowRuns(runsData.runs || [])
+        } catch (err) {
+            console.error('Failed to load actions:', err)
         }
     }
 
@@ -295,6 +320,12 @@ function Repository({ user, logout, tab = 'code' }) {
                         onClick={() => setActiveTab('commits')}
                     >
                         Commits
+                    </button>
+                    <button
+                        className={`repo-tab ${activeTab === 'actions' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('actions')}
+                    >
+                        Actions
                     </button>
                 </div>
             </div>
@@ -583,6 +614,114 @@ function Repository({ user, logout, tab = 'code' }) {
                                 ))
                             )}
                         </div>
+                    </div>
+                )}
+
+                {activeTab === 'actions' && (
+                    <div className="actions-tab">
+                        <div className="actions-header">
+                            <h3>Workflows</h3>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>
+                                Workflows are defined in .codara/workflows/*.yml
+                            </p>
+                        </div>
+
+                        {workflows.length === 0 ? (
+                            <div className="empty-state">
+                                <h3>No workflows</h3>
+                                <p>Create a workflow file in .codara/workflows/</p>
+                                <pre style={{
+                                    background: 'var(--input-bg)',
+                                    padding: '1rem',
+                                    borderRadius: '4px',
+                                    fontSize: '0.85em',
+                                    textAlign: 'left',
+                                    marginTop: '1rem'
+                                }}>
+                                    {`# .codara/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    steps:
+      - name: Checkout code
+        uses: github/actions/checkout@v3
+      - name: Run tests
+        run: npm test`}
+                                </pre>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="workflows-list" style={{ marginBottom: '2rem' }}>
+                                    {workflows.map((workflow, idx) => (
+                                        <div key={idx} className="workflow-item" style={{
+                                            background: 'var(--card-bg)',
+                                            padding: '1rem',
+                                            borderRadius: '4px',
+                                            marginBottom: '0.5rem',
+                                            border: '1px solid var(--border-color)'
+                                        }}>
+                                            <strong>{workflow.name}</strong>
+                                            <span style={{ marginLeft: '1rem', color: 'var(--text-secondary)' }}>
+                                                {workflow.filename}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <h3>Recent runs</h3>
+                                {workflowRuns.length === 0 ? (
+                                    <div className="empty-state">
+                                        <p>No workflow runs yet</p>
+                                    </div>
+                                ) : (
+                                    <div className="runs-list">
+                                        {workflowRuns.map(run => (
+                                            <Link
+                                                key={run.id}
+                                                to={`/${owner}/${repo}/actions/runs/${run.id}`}
+                                                className="run-item"
+                                                style={{
+                                                    display: 'block',
+                                                    background: 'var(--card-bg)',
+                                                    padding: '1rem',
+                                                    borderRadius: '4px',
+                                                    marginBottom: '0.5rem',
+                                                    border: '1px solid var(--border-color)',
+                                                    textDecoration: 'none',
+                                                    color: 'var(--text-primary)'
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                    <span style={{
+                                                        padding: '0.25rem 0.5rem',
+                                                        borderRadius: '4px',
+                                                        fontSize: '0.85em',
+                                                        background: run.status === 'completed' ? '#28a745' :
+                                                            run.status === 'failed' ? '#dc3545' : '#ffc107',
+                                                        color: 'white'
+                                                    }}>
+                                                        {run.status}
+                                                    </span>
+                                                    <div style={{ flex: 1 }}>
+                                                        <strong>{run.workflow_name}</strong>
+                                                        <div style={{ fontSize: '0.9em', color: 'var(--text-secondary)' }}>
+                                                            {run.event} • {new Date(run.started_at).toLocaleString()}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                )}
+                            </>
+                        )}
                     </div>
                 )}
             </div>

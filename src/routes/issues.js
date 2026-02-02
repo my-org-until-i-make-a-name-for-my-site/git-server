@@ -256,6 +256,67 @@ router.post('/:owner/:repo/issues/:number/comments', authenticateToken, (req, re
     );
 });
 
+// Delete comment from issue
+router.delete('/:owner/:repo/issues/:number/comments/:commentId', authenticateToken, (req, res) => {
+    const { owner, repo, number, commentId } = req.params;
+    const userId = req.user.id;
+
+    db.get(
+        `SELECT r.*, u.username as owner_name FROM repositories r
+     LEFT JOIN users u ON r.owner_id = u.id AND r.owner_type = 'user'
+     LEFT JOIN organizations o ON r.owner_id = o.id AND r.owner_type = 'org'
+     WHERE r.name = ? AND (u.username = ? OR o.name = ?)`,
+        [repo, owner, owner],
+        (err, repository) => {
+            if (err || !repository) {
+                return res.status(404).json({ error: 'Repository not found' });
+            }
+
+            // Check if user is admin, repo owner, or comment author
+            db.get(
+                `SELECT ic.*, i.id as issue_id FROM issue_comments ic
+         JOIN issues i ON ic.issue_id = i.id
+         WHERE ic.id = ? AND i.issue_number = ? AND i.repo_id = ?`,
+                [commentId, number, repository.id],
+                (err, comment) => {
+                    if (err || !comment) {
+                        return res.status(404).json({ error: 'Comment not found' });
+                    }
+
+                    // Check permissions
+                    const isCommentAuthor = comment.author_id === userId;
+                    const isRepoOwner = repository.owner_id === userId;
+                    const isAdmin = req.user.is_admin === 1;
+
+                    // Check if user is a collaborator
+                    db.get(
+                        'SELECT * FROM repo_collaborators WHERE repo_id = ? AND user_id = ?',
+                        [repository.id, userId],
+                        (err, collaborator) => {
+                            const isCollaborator = !!collaborator;
+
+                            if (!isCommentAuthor && !isRepoOwner && !isAdmin && !isCollaborator) {
+                                return res.status(403).json({ error: 'You do not have permission to delete this comment' });
+                            }
+
+                            db.run(
+                                'DELETE FROM issue_comments WHERE id = ?',
+                                [commentId],
+                                function (err) {
+                                    if (err) {
+                                        return res.status(500).json({ error: 'Failed to delete comment' });
+                                    }
+                                    res.json({ message: 'Comment deleted successfully' });
+                                }
+                            );
+                        }
+                    );
+                }
+            );
+        }
+    );
+});
+
 // Close issue
 router.patch('/:owner/:repo/issues/:number/close', authenticateToken, (req, res) => {
     const { owner, repo, number } = req.params;

@@ -8,13 +8,21 @@ const fs = require('fs-extra');
 const router = express.Router();
 const REPOS_BASE_PATH = process.env.REPOS_BASE_PATH || './repos';
 
+let workflowExecutor = null;
+
+function setWorkflowExecutor(executor) {
+    workflowExecutor = executor;
+}
+
 // Create a pull request
 router.post('/:owner/:repo/pulls', authenticateToken, async (req, res) => {
     const { owner, repo } = req.params;
-    const { title, body, head, base } = req.body;
+    const { title, body, head, base, head_branch, base_branch } = req.body;
+    const headBranch = head || head_branch;
+    const baseBranch = base || base_branch;
     const authorId = req.user.id;
 
-    if (!title || !head || !base) {
+    if (!title || !headBranch || !baseBranch) {
         return res.status(400).json({ error: 'Title, head branch, and base branch are required' });
     }
 
@@ -35,7 +43,7 @@ router.post('/:owner/:repo/pulls', authenticateToken, async (req, res) => {
                 const git = simpleGit(repository.path);
                 const branches = await git.branch();
 
-                if (!branches.all.includes(head) || !branches.all.includes(base)) {
+                if (!branches.all.includes(headBranch) || !branches.all.includes(baseBranch)) {
                     return res.status(400).json({ error: 'One or both branches do not exist' });
                 }
 
@@ -53,10 +61,27 @@ router.post('/:owner/:repo/pulls', authenticateToken, async (req, res) => {
                         db.run(
                             `INSERT INTO pull_requests (repo_id, pr_number, title, body, head_branch, base_branch, author_id) 
                VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                            [repository.id, prNumber, title, body, head, base, authorId],
+                            [repository.id, prNumber, title, body, headBranch, baseBranch, authorId],
                             function (err) {
                                 if (err) {
                                     return res.status(500).json({ error: 'Failed to create pull request' });
+                                }
+
+                                if (workflowExecutor) {
+                                    workflowExecutor.triggerWorkflowsByEvent(
+                                        repository.id,
+                                        repository.path,
+                                        'pull_request',
+                                        {
+                                            type: 'pull_request',
+                                            branch: baseBranch,
+                                            ref: `refs/heads/${baseBranch}`,
+                                            sha: '',
+                                            actor: req.user.username
+                                        }
+                                    ).catch((error) => {
+                                        console.error('Failed to trigger workflows for PR:', error);
+                                    });
                                 }
 
                                 res.json({
@@ -66,8 +91,8 @@ router.post('/:owner/:repo/pulls', authenticateToken, async (req, res) => {
                                         number: prNumber,
                                         title,
                                         body,
-                                        head_branch: head,
-                                        base_branch: base,
+                                        head_branch: headBranch,
+                                        base_branch: baseBranch,
                                         state: 'open',
                                         author_id: authorId
                                     }
@@ -213,7 +238,19 @@ router.post('/:owner/:repo/pulls/:number/merge', authenticateToken, async (req, 
 
                         // Merge head branch
                         const mergeMsg = commit_message || `Merge pull request #${number} from ${pr.head_branch}`;
-                        await git.merge([pr.head_branch, '-m', mergeMsg]);
+
+                        try {
+                            await git.merge([pr.head_branch, '-m', mergeMsg, '--no-ff']);
+                        } catch (mergeError) {
+                            // Check if it's a conflict
+                            await git.merge(['--abort']).catch(() => { });
+                            return res.status(409).json({
+                                error: 'Merge conflicts detected',
+                                details: mergeError.message,
+                                mergeable: false,
+                                has_conflicts: true
+                            });
+                        }
 
                         // Update PR status
                         db.run(
@@ -227,12 +264,70 @@ router.post('/:owner/:repo/pulls/:number/merge', authenticateToken, async (req, 
                                     return res.status(500).json({ error: 'Failed to update pull request' });
                                 }
 
-                                res.json({ message: 'Pull request merged successfully' });
+                                res.json({ message: 'Pull request merged successfully', merged: true });
                             }
                         );
                     } catch (error) {
                         console.error('Merge error:', error);
                         res.status(500).json({ error: 'Failed to merge pull request', details: error.message });
+                    }
+                }
+            );
+        }
+    );
+});
+
+// Check if PR is mergeable
+router.get('/:owner/:repo/pulls/:number/mergeable', authenticateToken, async (req, res) => {
+    const { owner, repo, number } = req.params;
+
+    db.get(
+        `SELECT r.* FROM repositories r
+     LEFT JOIN users u ON r.owner_id = u.id AND r.owner_type = 'user'
+     LEFT JOIN organizations o ON r.owner_id = o.id AND r.owner_type = 'org'
+     WHERE r.name = ? AND (u.username = ? OR o.name = ?)`,
+        [repo, owner, owner],
+        async (err, repository) => {
+            if (err || !repository) {
+                return res.status(404).json({ error: 'Repository not found' });
+            }
+
+            db.get(
+                'SELECT * FROM pull_requests WHERE repo_id = ? AND pr_number = ?',
+                [repository.id, number],
+                async (err, pr) => {
+                    if (err || !pr) {
+                        return res.status(404).json({ error: 'Pull request not found' });
+                    }
+
+                    try {
+                        const git = simpleGit(repository.path);
+
+                        // Create a temporary branch to test merge
+                        const testBranch = `test-merge-${Date.now()}`;
+                        await git.checkoutBranch(testBranch, pr.base_branch);
+
+                        try {
+                            // Try to merge
+                            await git.merge([pr.head_branch, '--no-commit', '--no-ff']);
+
+                            // Reset the merge
+                            await git.reset(['--merge']);
+                            await git.checkout(pr.base_branch);
+                            await git.branch(['-D', testBranch]);
+
+                            res.json({ mergeable: true, has_conflicts: false });
+                        } catch (mergeError) {
+                            // Conflicts detected
+                            await git.merge(['--abort']).catch(() => { });
+                            await git.checkout(pr.base_branch);
+                            await git.branch(['-D', testBranch]).catch(() => { });
+
+                            res.json({ mergeable: false, has_conflicts: true });
+                        }
+                    } catch (error) {
+                        console.error('Mergeable check error:', error);
+                        res.status(500).json({ error: 'Failed to check merge status' });
                     }
                 }
             );
@@ -339,6 +434,67 @@ router.post('/:owner/:repo/pulls/:number/comments', authenticateToken, (req, res
     );
 });
 
+// Delete comment from PR
+router.delete('/:owner/:repo/pulls/:number/comments/:commentId', authenticateToken, (req, res) => {
+    const { owner, repo, number, commentId } = req.params;
+    const userId = req.user.id;
+
+    db.get(
+        `SELECT r.*, u.username as owner_name FROM repositories r
+     LEFT JOIN users u ON r.owner_id = u.id AND r.owner_type = 'user'
+     LEFT JOIN organizations o ON r.owner_id = o.id AND r.owner_type = 'org'
+     WHERE r.name = ? AND (u.username = ? OR o.name = ?)`,
+        [repo, owner, owner],
+        (err, repository) => {
+            if (err || !repository) {
+                return res.status(404).json({ error: 'Repository not found' });
+            }
+
+            // Check if user is admin, repo owner, or comment author
+            db.get(
+                `SELECT pc.*, pr.id as pr_id FROM pr_comments pc
+         JOIN pull_requests pr ON pc.pr_id = pr.id
+         WHERE pc.id = ? AND pr.pr_number = ? AND pr.repo_id = ?`,
+                [commentId, number, repository.id],
+                (err, comment) => {
+                    if (err || !comment) {
+                        return res.status(404).json({ error: 'Comment not found' });
+                    }
+
+                    // Check permissions
+                    const isCommentAuthor = comment.author_id === userId;
+                    const isRepoOwner = repository.owner_id === userId;
+                    const isAdmin = req.user.is_admin === 1;
+
+                    // Check if user is a collaborator
+                    db.get(
+                        'SELECT * FROM repo_collaborators WHERE repo_id = ? AND user_id = ?',
+                        [repository.id, userId],
+                        (err, collaborator) => {
+                            const isCollaborator = !!collaborator;
+
+                            if (!isCommentAuthor && !isRepoOwner && !isAdmin && !isCollaborator) {
+                                return res.status(403).json({ error: 'You do not have permission to delete this comment' });
+                            }
+
+                            db.run(
+                                'DELETE FROM pr_comments WHERE id = ?',
+                                [commentId],
+                                function (err) {
+                                    if (err) {
+                                        return res.status(500).json({ error: 'Failed to delete comment' });
+                                    }
+                                    res.json({ message: 'Comment deleted successfully' });
+                                }
+                            );
+                        }
+                    );
+                }
+            );
+        }
+    );
+});
+
 // Add review to PR
 router.post('/:owner/:repo/pulls/:number/review', authenticateToken, (req, res) => {
     const { owner, repo, number } = req.params;
@@ -431,3 +587,4 @@ router.patch('/:owner/:repo/pulls/:number/close', authenticateToken, (req, res) 
 });
 
 module.exports = router;
+module.exports.setWorkflowExecutor = setWorkflowExecutor;

@@ -69,6 +69,29 @@ function IssueDetail({ user, logout }) {
         }
     }
 
+    const deleteComment = async (commentId) => {
+        const confirmDelete = confirm('Delete this comment?')
+        if (!confirmDelete) return
+
+        try {
+            const token = localStorage.getItem('token')
+            const response = await fetch(`/api/${owner}/${repo}/issues/${number}/comments/${commentId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+
+            if (response.ok) {
+                setComments(comments.filter(c => c.id !== commentId))
+            } else {
+                const data = await response.json()
+                alert(data.error || 'Failed to delete comment')
+            }
+        } catch (err) {
+            console.error('Failed to delete comment:', err)
+            alert('Failed to delete comment')
+        }
+    }
+
     const closeIssue = async () => {
         try {
             const token = localStorage.getItem('token')
@@ -187,6 +210,14 @@ function IssueDetail({ user, logout }) {
                                                     commented on {new Date(comment.created_at).toLocaleDateString()}
                                                 </span>
                                             </div>
+                                            {(comment.author_id === user.id || user.is_admin) && (
+                                                <button
+                                                    className="comment-delete-btn"
+                                                    onClick={() => deleteComment(comment.id)}
+                                                >
+                                                    Delete
+                                                </button>
+                                            )}
                                         </div>
                                         <div className="comment-body">
                                             {comment.body}

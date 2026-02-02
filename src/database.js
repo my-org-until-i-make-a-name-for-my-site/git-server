@@ -382,6 +382,34 @@ function initDatabase() {
           )
         `);
 
+        // Workflow runs
+        db.run(`
+          CREATE TABLE IF NOT EXISTS workflow_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            repo_id INTEGER NOT NULL,
+            workflow_name TEXT NOT NULL,
+            event TEXT NOT NULL,
+            status TEXT DEFAULT 'running',
+            started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            completed_at DATETIME,
+            FOREIGN KEY (repo_id) REFERENCES repositories(id)
+          )
+        `);
+
+        // Workflow jobs
+        db.run(`
+          CREATE TABLE IF NOT EXISTS workflow_jobs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id INTEGER NOT NULL,
+            job_name TEXT NOT NULL,
+            status TEXT DEFAULT 'running',
+            logs TEXT,
+            started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            completed_at DATETIME,
+            FOREIGN KEY (run_id) REFERENCES workflow_runs(id)
+          )
+        `);
+
         console.log('Database schema initialized');
     });
 }

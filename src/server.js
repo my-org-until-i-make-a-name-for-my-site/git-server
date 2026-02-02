@@ -37,6 +37,7 @@ const notificationsRoutes = require('./routes/notifications');
 const bansRoutes = require('./routes/bans');
 const settingsRoutes = require('./routes/settings');
 const aiRoutes = require('./routes/ai');
+const workflowRoutes = require('./routes/workflows');
 
 // Import middleware
 const { checkIpBan } = require('./middleware/ban');
@@ -48,6 +49,7 @@ const TaskManager = require('./services/task-manager');
 const CollaborationService = require('./services/collaboration');
 const { CIPipeline, CDPipeline } = require('./services/cicd');
 const JobManager = require('./services/job-manager');
+const WorkflowExecutor = require('./services/workflow-executor');
 
 const app = express();
 const server = http.createServer(app);
@@ -92,6 +94,7 @@ let collaborationService = null;
 let ciPipeline = null;
 let cdPipeline = null;
 let jobManager = null;
+let workflowExecutor = null;
 
 // Start cluster discovery if enabled
 if (config.get('clusters', 'enable_discovery', process.env.ENABLE_CLUSTER_DISCOVERY === 'true')) {
@@ -107,14 +110,20 @@ if (config.get('clusters', 'enable_discovery', process.env.ENABLE_CLUSTER_DISCOV
     });
 
     // Initialize cluster manager
-    clusterManager = new ClusterManager(clusterDiscovery, config.get('clusters', 'cluster_secret', process.env.CLUSTER_SECRET));
+    clusterManager = new ClusterManager(clusterDiscovery);
 }
 
 // Initialize task manager
 taskManager = new TaskManager(clusterDiscovery);
 
+// Expose cluster manager for management routes
+taskManager.clusterManager = clusterManager;
+
 // Initialize job manager
 jobManager = new JobManager();
+
+// Initialize workflow executor
+workflowExecutor = new WorkflowExecutor(taskManager);
 
 // Initialize collaboration service (WebSocket)
 collaborationService = new CollaborationService(server);
@@ -125,6 +134,8 @@ collaborationService = new CollaborationService(server);
 
 // Set services in route modules
 clusterRoutes.setServices(clusterDiscovery, taskManager);
+workflowRoutes.setWorkflowExecutor(workflowExecutor);
+pullsRoutes.setWorkflowExecutor(workflowExecutor);
 // cicdRoutes.setServices(ciPipeline, cdPipeline);
 
 // API Routes
@@ -144,6 +155,7 @@ app.use('/api/notifications', notificationsRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/bans', bansRoutes);
+app.use('/api', workflowRoutes);
 app.use('/api', issuesRoutes);
 app.use('/api', pullsRoutes);
 app.use('/api', commitsRoutes);

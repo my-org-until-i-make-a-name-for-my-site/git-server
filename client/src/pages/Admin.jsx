@@ -9,6 +9,10 @@ function Admin({ user, logout }) {
     const [repos, setRepos] = useState([])
     const [orgs, setOrgs] = useState([])
     const [loading, setLoading] = useState(true)
+    const [sqlQuery, setSqlQuery] = useState('')
+    const [sqlResult, setSqlResult] = useState(null)
+    const [clusters, setClusters] = useState([])
+    const [clusterSummary, setClusterSummary] = useState(null)
 
     useEffect(() => {
         loadData()
@@ -50,10 +54,32 @@ function Admin({ user, logout }) {
                 setOrgs(orgsData.organizations || [])
             }
 
+            if (activeTab === 'clusters') {
+                const clustersRes = await fetch('/api/clusters/stats', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                const clustersData = await clustersRes.json()
+                setClusters(clustersData.clusters || [])
+                setClusterSummary(clustersData.summary || null)
+            }
+
             setLoading(false)
         } catch (err) {
             console.error('Failed to load admin data:', err)
             setLoading(false)
+        }
+    }
+
+    const handleClusterAction = async (clusterId, action) => {
+        const token = localStorage.getItem('token')
+        try {
+            await fetch(`/api/clusters/${clusterId}/${action}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            loadData()
+        } catch (err) {
+            console.error(`Failed to ${action} cluster:`, err)
         }
     }
 
@@ -131,6 +157,18 @@ function Admin({ user, logout }) {
                     >
                         Organizations
                     </button>
+                    <button
+                        className={`admin-tab ${activeTab === 'sql' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('sql')}
+                    >
+                        SQL Console
+                    </button>
+                    <button
+                        className={`admin-tab ${activeTab === 'clusters' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('clusters')}
+                    >
+                        Clusters
+                    </button>
                 </div>
 
                 {loading ? (
@@ -143,19 +181,23 @@ function Admin({ user, logout }) {
                             <div className="stats-grid">
                                 <div className="stat-card">
                                     <h3>Total Users</h3>
-                                    <div className="stat-value">{stats.total_users || 0}</div>
+                                    <div className="stat-value">{stats.stats?.userCount || stats.userCount || 0}</div>
                                 </div>
                                 <div className="stat-card">
                                     <h3>Total Repositories</h3>
-                                    <div className="stat-value">{stats.total_repositories || 0}</div>
+                                    <div className="stat-value">{stats.stats?.repoCount || stats.repoCount || 0}</div>
                                 </div>
                                 <div className="stat-card">
                                     <h3>Total Organizations</h3>
-                                    <div className="stat-value">{stats.total_organizations || 0}</div>
+                                    <div className="stat-value">{stats.stats?.orgCount || stats.orgCount || 0}</div>
                                 </div>
                                 <div className="stat-card">
-                                    <h3>Active Clusters</h3>
-                                    <div className="stat-value">{stats.active_clusters || 0}</div>
+                                    <h3>Admins</h3>
+                                    <div className="stat-value">{stats.stats?.adminCount || stats.adminCount || 0}</div>
+                                </div>
+                                <div className="stat-card">
+                                    <h3>Moderators</h3>
+                                    <div className="stat-value">{stats.stats?.moderatorCount || stats.moderatorCount || 0}</div>
                                 </div>
                             </div>
                         )}
@@ -295,6 +337,170 @@ function Admin({ user, logout }) {
                                         ))}
                                     </tbody>
                                 </table>
+                            </div>
+                        )}
+
+                        {activeTab === 'sql' && (
+                            <div className="sql-console">
+                                <div className="sql-header">
+                                    <h2>SQL Console</h2>
+                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>
+                                        Direct database access for admins. Use with caution.
+                                    </p>
+                                </div>
+                                <textarea
+                                    value={sqlQuery}
+                                    onChange={(e) => setSqlQuery(e.target.value)}
+                                    placeholder="Enter SQL query..."
+                                    rows="8"
+                                    style={{
+                                        width: '100%',
+                                        padding: '1rem',
+                                        fontFamily: 'monospace',
+                                        fontSize: '0.9em',
+                                        background: 'var(--input-bg)',
+                                        color: 'var(--text-primary)',
+                                        border: '1px solid var(--border-color)',
+                                        borderRadius: '4px',
+                                        marginBottom: '1rem'
+                                    }}
+                                />
+                                <button
+                                    onClick={async () => {
+                                        const token = localStorage.getItem('token')
+                                        try {
+                                            const res = await fetch('/api/admin/sql', {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Authorization': `Bearer ${token}`,
+                                                    'Content-Type': 'application/json'
+                                                },
+                                                body: JSON.stringify({ query: sqlQuery })
+                                            })
+                                            const data = await res.json()
+                                            setSqlResult(data)
+                                        } catch (err) {
+                                            setSqlResult({ error: err.message })
+                                        }
+                                    }}
+                                    className="action-btn primary"
+                                    style={{ marginBottom: '1rem' }}
+                                >
+                                    Execute Query
+                                </button>
+                                {sqlResult && (
+                                    <div className="sql-result" style={{
+                                        background: 'var(--card-bg)',
+                                        padding: '1rem',
+                                        borderRadius: '4px',
+                                        border: '1px solid var(--border-color)'
+                                    }}>
+                                        {sqlResult.error ? (
+                                            <div style={{ color: '#ff6b6b' }}>
+                                                Error: {sqlResult.error}
+                                            </div>
+                                        ) : (
+                                            <>
+                                                {sqlResult.rows && (
+                                                    <>
+                                                        <div style={{ marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
+                                                            {sqlResult.count} row(s) returned
+                                                        </div>
+                                                        <pre style={{
+                                                            overflow: 'auto',
+                                                            maxHeight: '400px',
+                                                            background: 'var(--input-bg)',
+                                                            padding: '1rem',
+                                                            borderRadius: '4px'
+                                                        }}>
+                                                            {JSON.stringify(sqlResult.rows, null, 2)}
+                                                        </pre>
+                                                    </>
+                                                )}
+                                                {sqlResult.changes !== undefined && (
+                                                    <div>
+                                                        {sqlResult.message}<br />
+                                                        Rows affected: {sqlResult.changes}
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'clusters' && (
+                            <div className="cluster-management">
+                                <h2>Cluster Management</h2>
+                                <p style={{ color: 'var(--text-secondary)' }}>
+                                    Connected clusters on the local network
+                                </p>
+                                {clusterSummary && (
+                                    <div className="stats-grid" style={{ marginBottom: '1rem' }}>
+                                        <div className="stat-card">
+                                            <h3>Total Clusters</h3>
+                                            <div className="stat-value">{clusterSummary.total || 0}</div>
+                                        </div>
+                                        <div className="stat-card">
+                                            <h3>Online</h3>
+                                            <div className="stat-value">{clusterSummary.online || 0}</div>
+                                        </div>
+                                        <div className="stat-card">
+                                            <h3>Running Tasks</h3>
+                                            <div className="stat-value">{clusterSummary.runningTasks || 0}</div>
+                                        </div>
+                                        <div className="stat-card">
+                                            <h3>Available Slots</h3>
+                                            <div className="stat-value">{clusterSummary.availableSlots || 0}</div>
+                                        </div>
+                                    </div>
+                                )}
+                                <div id="clusterList">
+                                    {clusters.length === 0 ? (
+                                        <p>No clusters discovered</p>
+                                    ) : (
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Cluster</th>
+                                                    <th>Address</th>
+                                                    <th>CPU</th>
+                                                    <th>Memory</th>
+                                                    <th>Status</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {clusters.map(cluster => (
+                                                    <tr key={cluster.id}>
+                                                        <td>{cluster.hostname || cluster.id}</td>
+                                                        <td>{cluster.address}:{cluster.port}</td>
+                                                        <td>{cluster.cpus || 0}</td>
+                                                        <td>{cluster.totalMemory ? Math.round(cluster.totalMemory / (1024 * 1024 * 1024)) + ' GB' : 'N/A'}</td>
+                                                        <td>{cluster.stats ? 'Online' : 'Offline'}</td>
+                                                        <td>
+                                                            <div className="action-buttons">
+                                                                <button
+                                                                    className="action-btn"
+                                                                    onClick={() => handleClusterAction(cluster.id, 'disconnect')}
+                                                                >
+                                                                    Disconnect
+                                                                </button>
+                                                                <button
+                                                                    className="action-btn primary"
+                                                                    onClick={() => handleClusterAction(cluster.id, 'reconnect')}
+                                                                >
+                                                                    Reconnect
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </>
