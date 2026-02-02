@@ -29,8 +29,17 @@ router.get('/:owner/:repo/commits', async (req, res) => {
 
                 // Get commits from git with branch filtering
                 const git = simpleGit(repository.path);
+                const branches = await git.branch();
+                const targetBranch = branches.all.includes(branch)
+                    ? branch
+                    : (branches.current || branches.all[0]);
+
+                if (!targetBranch) {
+                    return res.json({ commits: [] });
+                }
+
                 git.log({
-                    from: branch,
+                    from: targetBranch,
                     maxCount: parseInt(per_page),
                     '--skip': offset
                 }).then(log => {
@@ -51,7 +60,8 @@ router.get('/:owner/:repo/commits', async (req, res) => {
                             message: c.message,
                             date: c.date,
                             hash: c.hash
-                        }))
+                        })),
+                        branch: targetBranch
                     });
                 }).catch(error => {
                     console.error('Error getting commits from git:', error);

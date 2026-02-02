@@ -7,11 +7,9 @@ const WebSocket = require('ws');
 const http = require('http');
 
 const CLUSTER_PORT = process.env.CLUSTER_PORT || 4000;
-const DISCOVERY_PORT = process.env.DISCOVERY_PORT || 4001;
-const MAX_CONCURRENT_TASKS = parseInt(process.env.MAX_CONCURRENT_TASKS) || 4;
+const DISCOVERY_PORT = process.env.DISCOVERY_PORT || process.env.CLUSTER_DISCOVERY_PORT || 4001;
+const MAX_CONCURRENT_TASKS = 5;
 const TASK_TIMEOUT = parseInt(process.env.TASK_TIMEOUT) || 300000;
-const MAX_CPU_PERCENT = parseInt(process.env.MAX_CPU_PERCENT) || 80;
-const MAX_MEMORY_PERCENT = parseInt(process.env.MAX_MEMORY_PERCENT) || 80;
 const JOBS_BASE_PATH = process.env.JOBS_BASE_PATH || 'Z:/mnt/runners/jobs';
 
 class ClusterAgent {
@@ -72,11 +70,7 @@ class ClusterAgent {
                 return res.status(503).json({ error: 'Max concurrent tasks reached' });
             }
 
-            // Check resource availability
-            const stats = this.getSystemStats();
-            if (stats.memoryUsagePercent > MAX_MEMORY_PERCENT || stats.cpu > (MAX_CPU_PERCENT / 10)) {
-                return res.status(503).json({ error: 'Insufficient resources' });
-            }
+            // No CPU/memory limits enforced
 
             const taskId = ++this.taskIdCounter;
             const task = {
@@ -113,11 +107,7 @@ class ClusterAgent {
                 return res.status(503).json({ error: 'Max concurrent tasks reached' });
             }
 
-            // Check resource availability
-            const stats = this.getSystemStats();
-            if (stats.memoryUsagePercent > MAX_MEMORY_PERCENT || stats.cpu > (MAX_CPU_PERCENT / 10)) {
-                return res.status(503).json({ error: 'Insufficient resources' });
-            }
+            // No CPU/memory limits enforced
 
             const taskId = ++this.taskIdCounter;
             const task = {

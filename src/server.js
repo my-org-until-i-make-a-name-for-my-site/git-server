@@ -98,7 +98,12 @@ let workflowExecutor = null;
 
 // Start cluster discovery if enabled
 if (config.get('clusters', 'enable_discovery', process.env.ENABLE_CLUSTER_DISCOVERY === 'true')) {
-    clusterDiscovery = new ClusterDiscovery(config.get('clusters', 'discovery_port', parseInt(process.env.CLUSTER_DISCOVERY_PORT) || 4001));
+    const envDiscoveryPort = parseInt(process.env.CLUSTER_DISCOVERY_PORT || process.env.DISCOVERY_PORT);
+    clusterDiscovery = new ClusterDiscovery(
+        Number.isFinite(envDiscoveryPort)
+            ? envDiscoveryPort
+            : config.get('clusters', 'discovery_port', 4001)
+    );
     clusterDiscovery.start();
 
     clusterDiscovery.on('cluster_discovered', (cluster) => {
