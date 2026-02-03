@@ -373,6 +373,14 @@ function Repository({ user, logout, tab = 'code' }) {
                                         )}
                                     </select>
                                 </div>
+                                <div className="codespace-actions">
+                                    <button
+                                        className="create-issue-btn"
+                                        onClick={() => window.location.href = `/codespaces/${encodeURIComponent(`${owner}-${repo}`)}`}
+                                    >
+                                        Run Codespace
+                                    </button>
+                                </div>
                             </div>
 
                             {files.length === 0 ? (

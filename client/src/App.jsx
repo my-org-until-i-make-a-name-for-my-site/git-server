@@ -15,6 +15,7 @@ import Settings from './pages/Settings'
 import IssueDetail from './pages/IssueDetail'
 import PullRequestDetail from './pages/PullRequestDetail'
 import WorkflowRunDetail from './pages/WorkflowRunDetail'
+import Codespaces from './pages/Codespaces'
 
 function App() {
     const [user, setUser] = useState(null)
@@ -148,6 +149,14 @@ function App() {
                     <Route
                         path="/admin"
                         element={user && user.is_admin ? <Admin user={user} logout={logout} /> : <Navigate to="/" />}
+                    />
+                    <Route
+                        path="/codespaces"
+                        element={user ? <Codespaces user={user} logout={logout} /> : <Navigate to="/login" />}
+                    />
+                    <Route
+                        path="/codespaces/:name"
+                        element={user ? <Codespaces user={user} logout={logout} /> : <Navigate to="/login" />}
                     />
                 </Routes>
             </Router>

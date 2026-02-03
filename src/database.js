@@ -317,6 +317,20 @@ function initDatabase() {
           )
         `);
 
+        // Codespaces
+        db.run(`
+          CREATE TABLE IF NOT EXISTS codespaces (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            content TEXT DEFAULT '',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            UNIQUE(user_id, name)
+          )
+        `);
+
         // PR reviews
         db.run(`
           CREATE TABLE IF NOT EXISTS pr_reviews (

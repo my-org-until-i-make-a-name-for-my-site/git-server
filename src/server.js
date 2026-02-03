@@ -2,7 +2,6 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const cookieParser = require('cookie-parser');
 const path = require('path');
 const http = require('http');
 const { getConfig } = require('./utils/config');
@@ -38,6 +37,7 @@ const bansRoutes = require('./routes/bans');
 const settingsRoutes = require('./routes/settings');
 const aiRoutes = require('./routes/ai');
 const workflowRoutes = require('./routes/workflows');
+const codespacesRoutes = require('./routes/codespaces');
 
 // Import middleware
 const { checkIpBan } = require('./middleware/ban');
@@ -59,8 +59,6 @@ const PORT = config.get('server', 'port', process.env.PORT || 3000);
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-// Cookie parser still used by some third-party middleware but auth relies on Authorization header.
-app.use(cookieParser());
 
 // IP ban check middleware (applied globally)
 app.use(checkIpBan);
@@ -171,6 +169,7 @@ app.use('/api', issuesRoutes);
 app.use('/api', pullsRoutes);
 app.use('/api', commitsRoutes);
 app.use('/api', editorRoutes);
+app.use('/api', codespacesRoutes);
 
 // Config API endpoint
 app.get('/api/config', (req, res) => {

@@ -4,18 +4,25 @@ const { authenticateToken } = require('../middleware/auth');
 const simpleGit = require('simple-git');
 const path = require('path');
 const fs = require('fs-extra');
+const createRateLimiter = require('../utils/rate-limit');
 
 const router = express.Router();
 const REPOS_BASE_PATH = process.env.REPOS_BASE_PATH || './repos';
 
 let workflowExecutor = null;
 
+const pullsLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 60,
+    message: 'Too many pull request requests, please try again soon.'
+});
+
 function setWorkflowExecutor(executor) {
     workflowExecutor = executor;
 }
 
 // Create a pull request
-router.post('/:owner/:repo/pulls', authenticateToken, async (req, res) => {
+router.post('/:owner/:repo/pulls', authenticateToken, pullsLimiter, async (req, res) => {
     const { owner, repo } = req.params;
     const { title, body, head, base, head_branch, base_branch } = req.body;
     const headBranch = head || head_branch;
@@ -113,7 +120,7 @@ router.post('/:owner/:repo/pulls', authenticateToken, async (req, res) => {
 });
 
 // Get all pull requests for a repository
-    router.get('/:owner/:repo/pulls', authenticateToken, (req, res) => {
+    router.get('/:owner/:repo/pulls', authenticateToken, pullsLimiter, (req, res) => {
     const { owner, repo } = req.params;
     const { state = 'open', page = 1, per_page = 30 } = req.query;
 

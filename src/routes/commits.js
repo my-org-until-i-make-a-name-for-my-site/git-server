@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../database');
 const { authenticateToken } = require('../middleware/auth');
+const createRateLimiter = require('../utils/rate-limit');
 const simpleGit = require('simple-git');
 const path = require('path');
 const fs = require('fs-extra');
@@ -282,7 +283,7 @@ router.get('/:owner/:repo/tree/:branch/:filepath', async (req, res) => {
 });
 
 // Get file content
-router.get('/:owner/:repo/contents/:branch/:filepath', async (req, res) => {
+router.get('/:owner/:repo/contents/:branch/:filepath', contentReadLimiter, async (req, res) => {
     const { owner, repo, branch } = req.params;
     let { filepath } = req.params;
 
@@ -322,8 +323,20 @@ router.get('/:owner/:repo/contents/:branch/:filepath', async (req, res) => {
     );
 });
 
+const contentWriteLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 30,
+    message: 'Too many file changes, please wait and try again.'
+});
+
+const contentReadLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 120,
+    message: 'Too many file requests, please slow down.'
+});
+
 // Create or update file content
-router.post('/:owner/:repo/contents/:branch/:filepath', authenticateToken, async (req, res) => {
+router.post('/:owner/:repo/contents/:branch/:filepath', authenticateToken, contentWriteLimiter, async (req, res) => {
     const { owner, repo, branch } = req.params;
     let { filepath } = req.params;
     const { content = '', message } = req.body;
@@ -395,7 +408,7 @@ router.post('/:owner/:repo/contents/:branch/:filepath', authenticateToken, async
 });
 
 // Delete file content
-router.delete('/:owner/:repo/contents/:branch/:filepath', authenticateToken, async (req, res) => {
+router.delete('/:owner/:repo/contents/:branch/:filepath', authenticateToken, contentWriteLimiter, async (req, res) => {
     const { owner, repo, branch } = req.params;
     let { filepath } = req.params;
 
