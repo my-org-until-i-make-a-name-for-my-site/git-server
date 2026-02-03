@@ -2,7 +2,6 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const cookieParser = require('cookie-parser');
 const path = require('path');
 const http = require('http');
 const { getConfig } = require('./utils/config');
@@ -38,6 +37,7 @@ const bansRoutes = require('./routes/bans');
 const settingsRoutes = require('./routes/settings');
 const aiRoutes = require('./routes/ai');
 const workflowRoutes = require('./routes/workflows');
+const codespacesRoutes = require('./routes/codespaces');
 
 // Import middleware
 const { checkIpBan } = require('./middleware/ban');
@@ -59,7 +59,6 @@ const PORT = config.get('server', 'port', process.env.PORT || 3000);
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(cookieParser());
 
 // IP ban check middleware (applied globally)
 app.use(checkIpBan);
@@ -68,7 +67,12 @@ app.use(express.static(path.join(__dirname, '../dist')));
 const distPath = path.join(__dirname, '../dist');
 
 app.get(/(.*)/, (req, res, next) => {
-    if (req.path === '/git' || req.path.startsWith('/git/') || req.path.includes('.git')) {
+    const gitServicePaths = ['info/refs', 'git-upload-pack', 'git-receive-pack'];
+    const isGitService = gitServicePaths.some((segment) => req.path.includes(`/${segment}`));
+    const rawPath = req.path.replace(/^\/+/, '');
+    const parts = rawPath.split('/').filter(Boolean);
+    const isGitRepoPath = parts.length >= 3 && parts[2].endsWith('.git');
+    if (req.path === '/git' || req.path.startsWith('/git/') || req.path.includes('.git') || isGitService || isGitRepoPath) {
         return next();
     }
     const filePath = path.join(distPath, req.path);
@@ -165,6 +169,7 @@ app.use('/api', issuesRoutes);
 app.use('/api', pullsRoutes);
 app.use('/api', commitsRoutes);
 app.use('/api', editorRoutes);
+app.use('/api', codespacesRoutes);
 
 // Config API endpoint
 app.get('/api/config', (req, res) => {
@@ -189,7 +194,7 @@ app.use((err, req, res, next) => {
 
 server.listen(PORT, () => {
     console.log(`Codara platform running on http://localhost:${PORT}`);
-    console.log(`Git clone URL format: http://localhost:${PORT}/git/{owner}/{repo}`);
+    console.log(`Git clone URL format: http://localhost:${PORT}/{owner}/{repo}(.git optional)`);
     if (clusterDiscovery) {
         console.log('Cluster discovery enabled');
     }

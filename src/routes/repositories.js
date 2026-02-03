@@ -105,7 +105,7 @@ router.post('/', authenticateToken, async (req, res) => {
             const tempGit = simpleGit(tempDir);
 
             // Initialize non-bare repo
-            await tempGit.init();
+            await tempGit.init(['--initial-branch=main']);
             await tempGit.addConfig('user.name', req.user.username);
             await tempGit.addConfig('user.email', req.user.email || 'user@codara.dev');
 
@@ -114,7 +114,7 @@ router.post('/', authenticateToken, async (req, res) => {
             await fs.writeFile(readmePath, `# ${name}\n\n${description || 'A new repository on Codara'}\n`);
 
             // Commit and push to bare repo
-            await tempGit.addRemote('origin', `${req.protocol || 'http'}://localhost:${process.env.PORT || 3000}/git/${ownerPath}/${name}.git`);
+            await tempGit.addRemote('origin', path.resolve(repoPath));
             await tempGit.add('README.md');
             await tempGit.commit('Initial commit');
 
@@ -149,7 +149,7 @@ router.post('/', authenticateToken, async (req, res) => {
                         owner: ownerPath,
                         path: repoPath,
                         is_private,
-                        clone_url: `http://localhost:${process.env.PORT || 3000}/${ownerPath}/${name}.git`
+                        clone_url: `${req.protocol}://${req.get('host')}/${ownerPath}/${name}.git`
                     }
                 });
             }
@@ -183,9 +183,10 @@ router.get('/my', authenticateToken, (req, res) => {
                 return res.status(500).json({ error: 'Database error' });
             }
 
+            const baseUrl = `${req.protocol}://${req.get('host')}`;
             const reposWithUrls = repos.map(repo => ({
                 ...repo,
-                clone_url: `http://localhost:${process.env.PORT || 3000}/${repo.owner_name}/${repo.name}.git`
+                clone_url: `${baseUrl}/${repo.owner_name}/${repo.name}.git`
             }));
 
             res.json({ repositories: reposWithUrls });
@@ -218,7 +219,7 @@ router.get('/:owner/:repo', authenticateToken, (req, res) => {
             res.json({
                 repository: {
                     ...repository,
-                    clone_url: `http://localhost:${process.env.PORT || 3000}/${owner}/${repo}.git`
+                    clone_url: `${req.protocol}://${req.get('host')}/${owner}/${repo}.git`
                 }
             });
         }

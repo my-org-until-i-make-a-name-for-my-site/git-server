@@ -101,7 +101,7 @@ router.post('/login', (req, res) => {
 // Get current user
 router.get('/me', (req, res) => {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1] || req.cookies?.token;
+  const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
     return res.status(401).json({ error: 'Not authenticated' });

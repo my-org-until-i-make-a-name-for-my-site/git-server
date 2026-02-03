@@ -7,7 +7,7 @@ function Dashboard({ user, logout }) {
   const [repos, setRepos] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [newRepo, setNewRepo] = useState({ name: '', description: '' })
+  const [newRepo, setNewRepo] = useState({ name: '', description: '', owner_type: 'user', owner_name: '' })
 
   useEffect(() => {
     loadRepositories()
@@ -40,14 +40,14 @@ function Dashboard({ user, logout }) {
         },
         body: JSON.stringify({
           ...newRepo,
-          owner_type: 'user',
+          owner_name: newRepo.owner_type === 'org' ? newRepo.owner_name : undefined,
           is_private: false
         })
       })
 
       if (response.ok) {
         setShowCreateModal(false)
-        setNewRepo({ name: '', description: '' })
+        setNewRepo({ name: '', description: '', owner_type: 'user', owner_name: '' })
         loadRepositories()
       }
     } catch (err) {
@@ -90,6 +90,7 @@ function Dashboard({ user, logout }) {
     const [organizations, setOrganizations] = useState([])
     const [showCreateOrgModal, setShowCreateOrgModal] = useState(false)
     const [newOrgName, setNewOrgName] = useState('')
+    const ownerSelectValue = newRepo.owner_type === 'org' ? newRepo.owner_name : 'user'
 
   return (
     <div className="dashboard">
@@ -117,10 +118,10 @@ function Dashboard({ user, logout }) {
             {repos.map(repo => (
               <div key={repo.id} className="repo-card">
                 <div className="repo-header">
-                  <Link to={`/${user.username}/${repo.name}`} className="repo-name">
+                  <Link to={`/${repo.owner_name}/${repo.name}`} className="repo-name">
                     {repo.name}
                   </Link>
-                  <span className="repo-visibility">Public</span>
+                  <span className="repo-visibility">{repo.is_private ? 'Private' : 'Public'}</span>
                 </div>
                 <p className="repo-description">{repo.description || 'No description'}</p>
                 <div className="repo-meta">
@@ -128,7 +129,7 @@ function Dashboard({ user, logout }) {
                   <span>Updated {new Date(repo.updated_at).toLocaleDateString()}</span>
                 </div>
                 <div className="repo-actions">
-                  <Link to={`/${user.username}/${repo.name}/files`} className="btn-small">
+                  <Link to={`/${repo.owner_name}/${repo.name}/files`} className="btn-small">
                     📂 Browse Files
                   </Link>
                   <a href={repo.clone_url} className="btn-small">
@@ -174,6 +175,25 @@ function Dashboard({ user, logout }) {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3>Create New Repository</h3>
             <form onSubmit={createRepository}>
+              <div className="form-group">
+                <label>Owner</label>
+                <select
+                  value={ownerSelectValue}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    if (value === 'user') {
+                      setNewRepo({ ...newRepo, owner_type: 'user', owner_name: '' })
+                    } else {
+                      setNewRepo({ ...newRepo, owner_type: 'org', owner_name: value })
+                    }
+                  }}
+                >
+                  <option value="user">Personal ({user.username})</option>
+                  {organizations.map(org => (
+                    <option key={org.id} value={org.name}>{org.display_name || org.name}</option>
+                  ))}
+                </select>
+              </div>
               <div className="form-group">
                 <label>Repository Name</label>
                 <input

@@ -17,20 +17,26 @@ const parseGitPath = (rawPath) => {
     if (!normalized) return { isGitPath: false };
 
     const parts = normalized.split('/');
-    if (parts[0] !== 'git') return { isGitPath: false };
+    const usesGitPrefix = parts[0] === 'git';
+    const ownerIndex = usesGitPrefix ? 1 : 0;
+    const repoIndex = usesGitPrefix ? 2 : 1;
 
-    if (parts.length < 3) {
+    if (parts.length < repoIndex + 1) {
         return { isGitPath: true, incomplete: true };
     }
 
-    const owner = parts[1];
-    let repo = parts[2];
+    const owner = parts[ownerIndex];
+    let repo = parts[repoIndex];
+
+    if (!owner || !repo) {
+        return { isGitPath: true, incomplete: true };
+    }
 
     if (repo.endsWith('.git')) {
         repo = repo.slice(0, -4);
     }
 
-    const rest = parts.slice(3).join('/');
+    const rest = parts.slice(repoIndex + 1).join('/');
     return { isGitPath: true, owner, repo, rest };
 };
 

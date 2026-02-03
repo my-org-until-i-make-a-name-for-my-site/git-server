@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../database');
 const { authenticateToken } = require('../middleware/auth');
+const createRateLimiter = require('../utils/rate-limit');
 const simpleGit = require('simple-git');
 const path = require('path');
 const fs = require('fs-extra');
@@ -29,7 +30,7 @@ router.get('/:owner/:repo/commits', async (req, res) => {
 
                 // Get commits from git with branch filtering
                 const git = simpleGit(repository.path);
-                const branches = await git.branch();
+                const branches = await git.branch(['--all']);
                 const targetBranch = branches.all.includes(branch)
                     ? branch
                     : (branches.current || branches.all[0]);
@@ -120,7 +121,7 @@ router.get('/:owner/:repo/branches', async (req, res) => {
 
             try {
                 const git = simpleGit(repository.path);
-                const branches = await git.branch();
+                const branches = await git.branch(['--all']);
 
                 res.json({ branches: branches.all, current: branches.current });
             } catch (error) {
@@ -282,12 +283,12 @@ router.get('/:owner/:repo/tree/:branch/:filepath', async (req, res) => {
 });
 
 // Get file content
-router.get('/:owner/:repo/contents/:branch/:filepath', async (req, res) => {
+router.get('/:owner/:repo/contents/:branch/:filepath', contentReadLimiter, async (req, res) => {
     const { owner, repo, branch } = req.params;
     let { filepath } = req.params;
 
     // Handle multiple path segments
-    const pathParts = req.path.split('/');
+    const pathParts = decodeURIComponent(req.path).split('/');
     const contentsIndex = pathParts.indexOf('contents');
     if (contentsIndex !== -1 && contentsIndex + 2 < pathParts.length) {
         filepath = pathParts.slice(contentsIndex + 2).join('/');
@@ -317,6 +318,160 @@ router.get('/:owner/:repo/contents/:branch/:filepath', async (req, res) => {
             } catch (error) {
                 console.error('Error reading file:', error);
                 res.status(404).json({ error: 'File not found' });
+            }
+        }
+    );
+});
+
+const contentWriteLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 30,
+    message: 'Too many file changes, please wait and try again.'
+});
+
+const contentReadLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 120,
+    message: 'Too many file requests, please slow down.'
+});
+
+// Create or update file content
+router.post('/:owner/:repo/contents/:branch/:filepath', authenticateToken, contentWriteLimiter, async (req, res) => {
+    const { owner, repo, branch } = req.params;
+    let { filepath } = req.params;
+    const { content = '', message } = req.body;
+
+    const pathParts = decodeURIComponent(req.path).split('/');
+    const contentsIndex = pathParts.indexOf('contents');
+    if (contentsIndex !== -1 && contentsIndex + 2 < pathParts.length) {
+        filepath = pathParts.slice(contentsIndex + 2).join('/');
+    }
+
+    db.get(
+        `SELECT r.* FROM repositories r
+     LEFT JOIN users u ON r.owner_id = u.id AND r.owner_type = 'user'
+     LEFT JOIN organizations o ON r.owner_id = o.id AND r.owner_type = 'org'
+     WHERE r.name = ? AND (u.username = ? OR o.name = ?)`,
+        [repo, owner, owner],
+        async (err, repository) => {
+            if (err || !repository) {
+                return res.status(404).json({ error: 'Repository not found' });
+            }
+
+            let tempDir;
+            try {
+                const git = simpleGit(repository.path);
+                const branches = await git.branch(['--all']);
+                const branchName = branches.all.includes(branch)
+                    ? branch
+                    : (branches.current || branches.all[0] || branch);
+
+                if (!branchName) {
+                    return res.status(400).json({ error: 'Branch not found' });
+                }
+
+                tempDir = path.join(repository.path, '..', `.edit-${repo}-${Date.now()}`);
+                await fs.ensureDir(tempDir);
+
+                const workingGit = simpleGit(tempDir);
+                await workingGit.init(['--initial-branch', branchName]);
+                await workingGit.addRemote('origin', path.resolve(repository.path));
+                try {
+                    await workingGit.fetch('origin', branchName);
+                    await workingGit.checkout(['-b', branchName, `origin/${branchName}`]);
+                } catch (fetchError) {
+                    await workingGit.checkoutLocalBranch(branchName);
+                }
+                await workingGit.addConfig('user.name', req.user.username);
+                await workingGit.addConfig('user.email', req.user.email || 'user@codara.dev');
+
+                const targetPath = path.join(tempDir, filepath);
+                await fs.ensureDir(path.dirname(targetPath));
+                await fs.writeFile(targetPath, content);
+
+                await workingGit.add(filepath);
+                const commitMessage = message || `Update ${filepath}`;
+                await workingGit.commit(commitMessage, filepath);
+                await workingGit.push('origin', branchName);
+
+                await fs.remove(tempDir);
+                res.json({ message: 'File saved', path: filepath });
+            } catch (error) {
+                console.error('Error saving file:', error);
+                if (tempDir) {
+                    await fs.remove(tempDir).catch(() => {});
+                }
+                res.status(500).json({ error: 'Failed to save file' });
+            }
+        }
+    );
+});
+
+// Delete file content
+router.delete('/:owner/:repo/contents/:branch/:filepath', authenticateToken, contentWriteLimiter, async (req, res) => {
+    const { owner, repo, branch } = req.params;
+    let { filepath } = req.params;
+
+    const pathParts = decodeURIComponent(req.path).split('/');
+    const contentsIndex = pathParts.indexOf('contents');
+    if (contentsIndex !== -1 && contentsIndex + 2 < pathParts.length) {
+        filepath = pathParts.slice(contentsIndex + 2).join('/');
+    }
+
+    db.get(
+        `SELECT r.* FROM repositories r
+     LEFT JOIN users u ON r.owner_id = u.id AND r.owner_type = 'user'
+     LEFT JOIN organizations o ON r.owner_id = o.id AND r.owner_type = 'org'
+     WHERE r.name = ? AND (u.username = ? OR o.name = ?)`,
+        [repo, owner, owner],
+        async (err, repository) => {
+            if (err || !repository) {
+                return res.status(404).json({ error: 'Repository not found' });
+            }
+
+            let tempDir;
+            try {
+                const git = simpleGit(repository.path);
+                const branches = await git.branch(['--all']);
+                const branchName = branches.all.includes(branch)
+                    ? branch
+                    : (branches.current || branches.all[0] || branch);
+
+                if (!branchName) {
+                    return res.status(400).json({ error: 'Branch not found' });
+                }
+
+                tempDir = path.join(repository.path, '..', `.edit-${repo}-${Date.now()}`);
+                await fs.ensureDir(tempDir);
+
+                const workingGit = simpleGit(tempDir);
+                await workingGit.init(['--initial-branch', branchName]);
+                await workingGit.addRemote('origin', path.resolve(repository.path));
+                try {
+                    await workingGit.fetch('origin', branchName);
+                    await workingGit.checkout(['-b', branchName, `origin/${branchName}`]);
+                } catch (fetchError) {
+                    await workingGit.checkoutLocalBranch(branchName);
+                }
+                await workingGit.addConfig('user.name', req.user.username);
+                await workingGit.addConfig('user.email', req.user.email || 'user@codara.dev');
+
+                const targetPath = path.join(tempDir, filepath);
+                if (await fs.pathExists(targetPath)) {
+                    await fs.remove(targetPath);
+                }
+                await workingGit.rm(filepath);
+                await workingGit.commit(`Delete ${filepath}`, filepath);
+                await workingGit.push('origin', branchName);
+
+                await fs.remove(tempDir);
+                res.json({ message: 'File deleted', path: filepath });
+            } catch (error) {
+                console.error('Error deleting file:', error);
+                if (tempDir) {
+                    await fs.remove(tempDir).catch(() => {});
+                }
+                res.status(500).json({ error: 'Failed to delete file' });
             }
         }
     );

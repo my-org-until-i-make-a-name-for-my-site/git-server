@@ -7,12 +7,7 @@ function authenticateToken(req, res, next) {
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    // Also check cookies
-    const cookieToken = req.cookies?.token;
-    if (!cookieToken) {
-      return res.status(401).json({ error: 'Access denied. No token provided.' });
-    }
-    req.token = cookieToken;
+    return res.status(401).json({ error: 'Access denied. No token provided.' });
   } else {
     req.token = token;
   }

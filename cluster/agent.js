@@ -200,7 +200,14 @@ class ClusterAgent {
         });
 
         this.discoverySocket.on('message', (msg, rinfo) => {
-            // We can receive discovery requests here if needed
+            try {
+                const data = JSON.parse(msg.toString());
+                if (data.type === 'cluster_probe') {
+                    this.announce();
+                }
+            } catch (error) {
+                // Ignore invalid messages
+            }
         });
 
         this.discoverySocket.on('listening', () => {
@@ -248,10 +255,19 @@ class ClusterAgent {
     }
 
     broadcast(message) {
-        const broadcastAddresses = [
-            '255.255.255.255',
-            '224.0.0.1'
-        ];
+        const broadcastAddresses = new Set(['255.255.255.255', '224.0.0.1']);
+
+        Object.values(os.networkInterfaces()).forEach((entries) => {
+            entries.forEach((iface) => {
+                if (iface.family !== 'IPv4' || iface.internal) return;
+                if (iface.netmask) {
+                    const ipParts = iface.address.split('.').map(Number);
+                    const maskParts = iface.netmask.split('.').map(Number);
+                    const broadcastParts = ipParts.map((part, i) => part | (~maskParts[i] & 255));
+                    broadcastAddresses.add(broadcastParts.join('.'));
+                }
+            });
+        });
 
         broadcastAddresses.forEach(addr => {
             this.discoverySocket.send(message, 0, message.length, DISCOVERY_PORT, addr, (err) => {

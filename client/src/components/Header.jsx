@@ -19,6 +19,7 @@ function Header({ user, logout }) {
                     <Link to="/" className="nav-link">Repositories</Link>
                     <Link to="/explore" className="nav-link">Explore</Link>
                     <Link to="/search" className="nav-link">Search</Link>
+                    <Link to="/codespaces" className="nav-link">Codespaces</Link>
                     {user.is_admin && (
                         <Link to="/admin" className="nav-link">Admin</Link>
                     )}

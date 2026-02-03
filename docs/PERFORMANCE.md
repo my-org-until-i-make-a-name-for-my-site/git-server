@@ -145,7 +145,7 @@ function calculateScore(cluster, task) {
 Support shallow clones for faster operations:
 
 ```bash
-git clone --depth 1 http://localhost:3000/git/owner/repo
+git clone --depth 1 http://localhost:3000/owner/repo
 ```
 
 ### 2. Compression

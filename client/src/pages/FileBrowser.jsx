@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useLocation } from 'react-router-dom'
 import Header from '../components/Header'
 import './FileBrowser.css'
@@ -10,8 +10,13 @@ function FileBrowser({ user, logout }) {
   const [fileContent, setFileContent] = useState(null)
   const [currentPath, setCurrentPath] = useState('')
   const [loading, setLoading] = useState(true)
-  const [editorActive, setEditorActive] = useState(false)
-  const [editorUrl, setEditorUrl] = useState('')
+  const [branches, setBranches] = useState([])
+  const [currentBranch, setCurrentBranch] = useState('main')
+  const [isEditing, setIsEditing] = useState(false)
+  const [editorContent, setEditorContent] = useState('')
+  const [editingPath, setEditingPath] = useState('')
+  const [saving, setSaving] = useState(false)
+  const uploadInputRef = useRef(null)
 
   useEffect(() => {
     // Extract path from URL
@@ -22,27 +27,56 @@ function FileBrowser({ user, logout }) {
 
   useEffect(() => {
     loadContent()
-  }, [currentPath])
+  }, [currentPath, currentBranch])
+
+  useEffect(() => {
+    loadBranches()
+  }, [owner, repo])
+
+  const loadBranches = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`/api/${owner}/${repo}/branches`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await response.json()
+      const branchNames = (data.branches || []).map((branch) =>
+        branch.replace(/^remotes\/origin\//, '')
+      )
+      const uniqueBranches = [...new Set(branchNames)].filter(Boolean)
+      setBranches(uniqueBranches)
+      if (uniqueBranches.length > 0) {
+        const mainBranch = uniqueBranches.find(branch => branch === 'main')
+        const nextBranch = mainBranch || uniqueBranches[0]
+        setCurrentBranch((current) => (current && uniqueBranches.includes(current) ? current : nextBranch))
+      }
+    } catch (err) {
+      console.error('Failed to load branches:', err)
+    }
+  }
 
   const loadContent = async () => {
     setLoading(true)
     setFileContent(null)
+    setIsEditing(false)
     
     try {
       const token = localStorage.getItem('token')
       
       // Try to load as a file first
-      const fileResponse = await fetch(`/api/${owner}/${repo}/contents/main/${currentPath}`, {
+      const fileResponse = await fetch(`/api/${owner}/${repo}/contents/${currentBranch}/${currentPath}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       
       if (fileResponse.ok) {
         const data = await fileResponse.json()
         setFileContent(data)
+        setEditorContent(data.content || '')
+        setEditingPath(data.path || currentPath)
         setFiles([])
       } else {
         // Load as directory
-        const dirResponse = await fetch(`/api/${owner}/${repo}/tree/main/${currentPath}`, {
+        const dirResponse = await fetch(`/api/${owner}/${repo}/tree/${currentBranch}/${currentPath}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         const data = await dirResponse.json()
@@ -55,39 +89,101 @@ function FileBrowser({ user, logout }) {
     }
   }
 
-  const startEditor = async () => {
+  const getDirectoryPath = () => (
+    fileContent ? currentPath.split('/').slice(0, -1).join('/') : currentPath
+  )
+
+  const saveFileContent = async (targetPath, content, message) => {
+    if (!targetPath) return
     try {
+      setSaving(true)
       const token = localStorage.getItem('token')
-      const response = await fetch(`/api/${owner}/${repo}/editor/start`, {
+      const response = await fetch(`/api/${owner}/${repo}/contents/${currentBranch}/${encodeURIComponent(targetPath)}`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({ content, message })
       })
-      const data = await response.json()
-      if (data.url) {
-        setEditorUrl(data.url)
-        setEditorActive(true)
+      if (!response.ok) {
+        throw new Error('Failed to save file')
       }
+      await loadContent()
+      setIsEditing(false)
     } catch (err) {
-      console.error('Failed to start editor:', err)
-      alert('Failed to start editor. Please check the server configuration.')
+      console.error('Failed to save file:', err)
+      alert(message?.startsWith('Upload') ? 'Failed to upload file' : 'Failed to save file')
+      throw err
+    } finally {
+      setSaving(false)
     }
   }
 
-  const stopEditor = async () => {
+  const deleteFile = async (targetPath) => {
+    if (!targetPath) return
+    if (!confirm(`Delete ${targetPath}?`)) return
     try {
       const token = localStorage.getItem('token')
-      await fetch(`/api/${owner}/${repo}/editor/stop`, {
-        method: 'POST',
+      const response = await fetch(`/api/${owner}/${repo}/contents/${currentBranch}/${encodeURIComponent(targetPath)}`, {
+        method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       })
-      setEditorActive(false)
-      setEditorUrl('')
+      if (!response.ok) {
+        throw new Error('Failed to delete file')
+      }
+      await loadContent()
+      setFileContent(null)
     } catch (err) {
-      console.error('Failed to stop editor:', err)
+      console.error('Failed to delete file:', err)
+      alert('Failed to delete file')
     }
+  }
+
+  const handleCreateFile = () => {
+    const filename = prompt('New file name')
+    if (!filename) return
+    const directoryPath = getDirectoryPath()
+    const targetPath = directoryPath ? `${directoryPath}/${filename}` : filename
+    setFileContent({ name: filename, path: targetPath, content: '' })
+    setEditorContent('')
+    setEditingPath(targetPath)
+    setIsEditing(true)
+  }
+
+  const handleUpload = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) {
+      alert('No file selected')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = async () => {
+      const directoryPath = getDirectoryPath()
+      const targetPath = directoryPath ? `${directoryPath}/${file.name}` : file.name
+      try {
+        await saveFileContent(targetPath, reader.result?.toString() || '', `Upload ${file.name}`)
+      } catch (error) {
+        alert('Failed to upload file')
+      }
+      if (uploadInputRef.current) {
+        uploadInputRef.current.value = ''
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  const handleDownload = () => {
+    if (!fileContent?.content) return
+    const blob = new Blob([fileContent.content], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileContent.name || 'file'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
   }
 
   const getBreadcrumbs = () => {
@@ -124,16 +220,37 @@ function FileBrowser({ user, logout }) {
             ))}
           </div>
           
-          <div className="editor-controls">
-            {!editorActive ? (
-              <button className="editor-btn" onClick={startEditor}>
-                🚀 Open in VSCode
+          <div className="file-toolbar">
+            <div className="branch-selector">
+              <label htmlFor="branch-select">Branch</label>
+              <select
+                id="branch-select"
+                value={currentBranch}
+                onChange={(event) => setCurrentBranch(event.target.value)}
+              >
+                {branches.length > 0 ? (
+                  branches.map((branch) => (
+                    <option key={branch} value={branch}>{branch}</option>
+                  ))
+                ) : (
+                  <option value="main">main</option>
+                )}
+              </select>
+            </div>
+            <div className="editor-controls">
+              <button className="editor-btn" onClick={handleCreateFile}>
+                + New File
               </button>
-            ) : (
-              <button className="editor-btn active" onClick={stopEditor}>
-                ✓ Editor Active - Click to Stop
-              </button>
-            )}
+              <label className="editor-btn upload-btn">
+                Upload File
+                <input
+                  type="file"
+                  ref={uploadInputRef}
+                  onChange={handleUpload}
+                  hidden
+                />
+              </label>
+            </div>
           </div>
         </div>
       </div>
@@ -149,23 +266,49 @@ function FileBrowser({ user, logout }) {
               <div className="file-viewer-header">
                 <h3>{fileContent.name}</h3>
                 <div className="file-actions">
-                  <button className="file-action-btn" onClick={() => window.open(fileContent.download_url)}>
+                  <button className="file-action-btn" onClick={handleDownload}>
                     Download
                   </button>
-                  <button className="file-action-btn" onClick={startEditor}>
-                    Edit in VSCode
+                  <button className="file-action-btn" onClick={() => setIsEditing(true)}>
+                    Edit
+                  </button>
+                  <button className="file-action-btn danger" onClick={() => deleteFile(fileContent.path)}>
+                    Delete
                   </button>
                 </div>
               </div>
               <div className="file-content">
-                <pre className="code-block">
-                  {fileContent.content.split('\n').map((line, index) => (
-                    <div key={index} className="code-line">
-                      <span className="line-number">{index + 1}</span>
-                      <span className="line-content">{line}</span>
+                {isEditing ? (
+                  <div className="inline-editor">
+                    <textarea
+                      value={editorContent}
+                      onChange={(e) => setEditorContent(e.target.value)}
+                      className="editor-textarea"
+                      rows="16"
+                    />
+                    <div className="editor-actions">
+                      <button
+                        className="file-action-btn primary"
+                        onClick={() => saveFileContent(editingPath, editorContent, `Update ${fileContent.name}`)}
+                        disabled={saving}
+                      >
+                        {saving ? 'Saving...' : 'Save'}
+                      </button>
+                      <button className="file-action-btn" onClick={() => setIsEditing(false)}>
+                        Cancel
+                      </button>
                     </div>
-                  ))}
-                </pre>
+                  </div>
+                ) : (
+                  <pre className="code-block">
+                    {fileContent.content.split('\n').map((line, index) => (
+                      <div key={index} className="code-line">
+                        <span className="line-number">{index + 1}</span>
+                        <span className="line-content">{line}</span>
+                      </div>
+                    ))}
+                  </pre>
+                )}
               </div>
             </div>
             
@@ -199,7 +342,20 @@ function FileBrowser({ user, logout }) {
                 >
                   {file.type === 'tree' ? '📁' : '📄'} {file.name}
                 </Link>
-                {file.size && <span className="file-size">{formatFileSize(file.size)}</span>}
+                <div className="file-item-meta">
+                  {file.size ? <span className="file-size">{formatFileSize(file.size)}</span> : null}
+                  {file.type === 'blob' && (
+                    <button
+                      className="file-action-btn small"
+                      onClick={(event) => {
+                        event.preventDefault()
+                        deleteFile(file.path)
+                      }}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
             {files.length === 0 && (
@@ -210,25 +366,6 @@ function FileBrowser({ user, logout }) {
           </div>
         )}
 
-        {editorActive && (
-          <div className="vscode-editor-container">
-            <div className="vscode-editor-header">
-              <h3>VSCode Web Editor</h3>
-              <span className="editor-status active">● Active</span>
-            </div>
-            {editorUrl ? (
-              <iframe 
-                src={editorUrl} 
-                className="vscode-iframe"
-                title="VSCode Editor"
-              />
-            ) : (
-              <div className="loading-editor">
-                Starting VSCode editor...
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   )

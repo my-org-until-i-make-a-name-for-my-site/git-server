@@ -29,12 +29,10 @@ A comprehensive, scalable, self-hosted Git platform built entirely in JavaScript
 - **Collaborators**: Add team members with permissions (read/write)
 
 ### 💻 Integrated Code Editor
-- **VSCode Web**: Full VSCode editor embedded in browser
-- **Isolated Instances**: Each project has its own editor instance
-- **Real-time Collaboration**: Live editing with cursor tracking (when contributors are online)
+- **Web Editor**: Lightweight in-browser editor optimized for mobile and desktop
 - **File Browser**: Navigate folders and files with syntax highlighting
 - **Line Numbers**: Professional code viewing
-- **Edit & Commit**: Edit files and commit back to repository
+- **Edit & Commit**: Edit files, create/delete files, and commit back to repository
 
 ### 🚀 CI/CD Pipeline System
 - **Job-based Execution**: Jobs stored in `Z:/mnt/runners/jobs/{job_id}/`
@@ -301,13 +299,14 @@ Codara Platform
 - `GET /api/clusters` - List discovered clusters
 - `POST /api/clusters/:id/assign-task` - Assign task to cluster
 
-### VSCode Editor
-- `POST /api/:owner/:repo/editor/start` - Start editor
-- `POST /api/:owner/:repo/editor/stop` - Stop editor
-- `GET /api/:owner/:repo/editor/status` - Check status
+### Web Editor
+- `GET /api/:owner/:repo/contents/:branch/:file` - Read file content
+- `POST /api/:owner/:repo/contents/:branch/:file` - Create/update file
+- `DELETE /api/:owner/:repo/contents/:branch/:file` - Delete file
 
 ### Git HTTP Protocol
-- `/git/:owner/:repo/*` - Git smart HTTP protocol
+- `/:owner/:repo/*` - Git smart HTTP protocol (supports optional `.git`)
+- `/git/:owner/:repo/*` - Legacy Git smart HTTP protocol
 
 ## 🔧 Cluster Setup
 
@@ -357,7 +356,7 @@ The cluster will automatically:
 5. Clone and start coding!
 
 ```bash
-git clone http://localhost:3000/git/username/repo-name
+git clone http://localhost:3000/username/repo-name
 cd repo-name
 # Make changes
 git add .
