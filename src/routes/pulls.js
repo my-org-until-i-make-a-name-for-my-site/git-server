@@ -44,7 +44,10 @@ router.post('/:owner/:repo/pulls', authenticateToken, async (req, res) => {
                 const branches = await git.branch();
 
                 if (!branches.all.includes(headBranch) || !branches.all.includes(baseBranch)) {
-                    return res.status(400).json({ error: 'One or both branches do not exist' });
+                    const missing = [];
+                    if (!branches.all.includes(headBranch)) missing.push(headBranch);
+                    if (!branches.all.includes(baseBranch)) missing.push(baseBranch);
+                    return res.status(400).json({ error: `Branch not found: ${missing.join(', ')}` });
                 }
 
                 // Get next PR number
@@ -110,7 +113,7 @@ router.post('/:owner/:repo/pulls', authenticateToken, async (req, res) => {
 });
 
 // Get all pull requests for a repository
-router.get('/:owner/:repo/pulls', (req, res) => {
+    router.get('/:owner/:repo/pulls', authenticateToken, (req, res) => {
     const { owner, repo } = req.params;
     const { state = 'open', page = 1, per_page = 30 } = req.query;
 

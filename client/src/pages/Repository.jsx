@@ -33,11 +33,12 @@ function Repository({ user, logout, tab = 'code' }) {
 
     useEffect(() => {
         if (branches.length > 0) {
-            setPrBaseBranch(branches[0] || 'main')
-            if (branches.length > 1) {
-                setPrHeadBranch(branches[1] || '')
-            }
-            setCommitsBranch(branches[0] || 'main')
+            const mainBranch = branches.find(branch => branch === 'main')
+            const defaultBranch = mainBranch || branches[0]
+            setPrBaseBranch(defaultBranch || 'main')
+            const headBranch = branches.find(branch => branch !== defaultBranch)
+            setPrHeadBranch(headBranch || defaultBranch || '')
+            setCommitsBranch(defaultBranch || 'main')
         }
     }, [branches])
 
@@ -70,7 +71,7 @@ function Repository({ user, logout, tab = 'code' }) {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const data = await response.json()
-            setRepoData(data)
+            setRepoData(data.repository || data)
             setLoading(false)
             if (!data.repository) {
                 setLoading(false)
@@ -91,9 +92,13 @@ function Repository({ user, logout, tab = 'code' }) {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const data = await response.json()
-            setBranches(data.branches || [])
+            const branchNames = (data.branches || []).map((branch) =>
+                branch.replace(/^remotes\/origin\//, '')
+            )
+            const uniqueBranches = [...new Set(branchNames)].filter(Boolean)
+            setBranches(uniqueBranches)
             if (data.current) {
-                setCurrentBranch(data.current)
+                setCurrentBranch(data.current.replace(/^remotes\/origin\//, ''))
             }
         } catch (err) {
             console.error('Failed to load branches:', err)
@@ -121,7 +126,7 @@ function Repository({ user, logout, tab = 'code' }) {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const data = await response.json()
-            setPulls(data.pulls || [])
+            setPulls(data.pull_requests || [])
         } catch (err) {
             console.error('Failed to load PRs:', err)
             setError('Failed to load pull requests')
@@ -218,7 +223,9 @@ function Repository({ user, logout, tab = 'code' }) {
                 })
             }).then(response => response.json())
                 .then(data => {
-                    setPulls([...pulls, data.pull_request])
+                    if (data?.pull_request) {
+                        setPulls([...pulls, data.pull_request])
+                    }
                 })
         } catch (err) {
             console.error('Failed to create pull request:', err)

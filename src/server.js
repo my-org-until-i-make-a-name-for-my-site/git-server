@@ -68,7 +68,12 @@ app.use(express.static(path.join(__dirname, '../dist')));
 const distPath = path.join(__dirname, '../dist');
 
 app.get(/(.*)/, (req, res, next) => {
-    if (req.path === '/git' || req.path.startsWith('/git/') || req.path.includes('.git')) {
+    const gitServicePaths = ['info/refs', 'git-upload-pack', 'git-receive-pack'];
+    const isGitService = gitServicePaths.some((segment) => req.path.includes(`/${segment}`));
+    const rawPath = req.path.replace(/^\/+/, '');
+    const parts = rawPath.split('/').filter(Boolean);
+    const isGitRepoPath = parts.length >= 3 && parts[2].endsWith('.git');
+    if (req.path === '/git' || req.path.startsWith('/git/') || req.path.includes('.git') || isGitService || isGitRepoPath) {
         return next();
     }
     const filePath = path.join(distPath, req.path);
@@ -189,7 +194,7 @@ app.use((err, req, res, next) => {
 
 server.listen(PORT, () => {
     console.log(`Codara platform running on http://localhost:${PORT}`);
-    console.log(`Git clone URL format: http://localhost:${PORT}/git/{owner}/{repo}`);
+    console.log(`Git clone URL format: http://localhost:${PORT}/{owner}/{repo}(.git optional)`);
     if (clusterDiscovery) {
         console.log('Cluster discovery enabled');
     }

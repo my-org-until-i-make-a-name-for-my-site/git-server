@@ -14,6 +14,21 @@ class ClusterDiscovery extends EventEmitter {
         this.scanInterval = null;
         this.localInfo = this.getLocalInfo();
         this.networkRanges = this.getNetworkRanges();
+        this.privateAddresses = this.networkRanges.flatMap(range => range.addresses || []);
+        this.scanBatchSize = parseInt(process.env.CLUSTER_SCAN_BATCH || '64', 10);
+        this.scanChunkSize = parseInt(process.env.CLUSTER_SCAN_CHUNK || '1024', 10);
+        this.scanState = this.buildScanState();
+    }
+
+    isPrivateIPv4(address) {
+        const parts = address.split('.').map(Number);
+        if (parts.length !== 4 || parts.some(part => Number.isNaN(part))) {
+            return false;
+        }
+        if (parts[0] === 10) return true;
+        if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+        if (parts[0] === 192 && parts[1] === 168) return true;
+        return false;
     }
 
     getLocalInfo() {
@@ -34,7 +49,7 @@ class ClusterDiscovery extends EventEmitter {
             arch: os.arch(),
             cpus: os.cpus().length,
             totalMemory: os.totalmem(),
-            addresses: addresses,
+            addresses,
             port: process.env.CLUSTER_PORT || 4000
         };
     }
@@ -45,7 +60,7 @@ class ClusterDiscovery extends EventEmitter {
 
         for (const name of Object.keys(interfaces)) {
             for (const iface of interfaces[name]) {
-                if (iface.family === 'IPv4' && !iface.internal) {
+                if (iface.family === 'IPv4' && !iface.internal && this.isPrivateIPv4(iface.address)) {
                     const ip = iface.address;
                     const netmask = iface.netmask;
 
@@ -62,13 +77,60 @@ class ClusterDiscovery extends EventEmitter {
                         broadcast: broadcastParts.join('.'),
                         start: networkParts,
                         end: broadcastParts,
-                        netmask: netmask
+                        netmask: netmask,
+                        addresses: [ip]
                     });
                 }
             }
         }
 
         return ranges;
+    }
+
+    getPrivateIPv4Ranges() {
+        return [
+            { start: [10, 0, 0, 0], end: [10, 255, 255, 255] },
+            { start: [172, 16, 0, 0], end: [172, 31, 255, 255] },
+            { start: [192, 168, 0, 0], end: [192, 168, 255, 255] }
+        ];
+    }
+
+    buildScanState() {
+        const ranges = [...this.getPrivateIPv4Ranges(), ...this.networkRanges];
+        const uniqueRanges = [];
+        const seen = new Set();
+
+        ranges.forEach((range) => {
+            const start = Array.isArray(range.start) ? range.start : range.start.split('.').map(Number);
+            const end = Array.isArray(range.end) ? range.end : range.end.split('.').map(Number);
+            const key = `${start.join('.')}-${end.join('.')}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                uniqueRanges.push({ range, start, end });
+            }
+        });
+
+        return uniqueRanges.map(({ range, start, end }) => ({
+            range,
+            start,
+            end,
+            startInt: this.ipToInt(start),
+            endInt: this.ipToInt(end),
+            cursor: this.ipToInt(start)
+        }));
+    }
+
+    ipToInt(parts) {
+        return ((parts[0] << 24) >>> 0) + (parts[1] << 16) + (parts[2] << 8) + parts[3];
+    }
+
+    intToIp(value) {
+        return [
+            (value >>> 24) & 255,
+            (value >>> 16) & 255,
+            (value >>> 8) & 255,
+            value & 255
+        ].join('.');
     }
 
     getSystemStats() {
@@ -129,6 +191,17 @@ class ClusterDiscovery extends EventEmitter {
                         address: rinfo.address,
                         lastSeen: Date.now(),
                         discovered_via: 'udp_broadcast'
+                    });
+
+                    this.getClusterStats(rinfo.address, data.port).then((stats) => {
+                        const cluster = this.clusters.get(clusterId);
+                        if (cluster && stats && Object.keys(stats).length > 0) {
+                            cluster.stats = stats.stats || stats;
+                            cluster.platform = stats.platform || cluster.platform;
+                            cluster.arch = stats.arch || cluster.arch;
+                            cluster.cpus = stats.cpus || cluster.cpus;
+                            cluster.totalMemory = stats.totalMemory || cluster.totalMemory;
+                        }
                     });
 
                     this.emit('cluster_discovered', {
@@ -239,40 +312,36 @@ class ClusterDiscovery extends EventEmitter {
 
         console.log('Scanning network for clusters...');
 
-        for (const range of this.networkRanges) {
-            // Scan the network range
-            await this.scanRange(range, clusterPort);
+        for (const state of this.scanState) {
+            await this.scanRange(state, clusterPort);
         }
     }
 
-    async scanRange(range, clusterPort) {
+    async scanRange(state, clusterPort) {
         const promises = [];
+        let current = state.cursor;
+        const end = Math.min(state.endInt, current + this.scanChunkSize);
 
-        // Generate all IPs in range
-        const start = range.start[3];
-        const end = range.end[3];
+        for (; current <= end; current++) {
+            const ip = this.intToIp(current);
 
-        for (let i = start + 1; i < end; i++) {
-            const ip = `${range.start[0]}.${range.start[1]}.${range.start[2]}.${i}`;
-
-            // Skip our own IPs
             if (this.localInfo.addresses.includes(ip)) {
                 continue;
             }
 
-            // Probe this IP for cluster service
+            this.sendProbe(ip);
             promises.push(this.probeCluster(ip, clusterPort));
 
-            // Batch requests to avoid overwhelming the network
-            if (promises.length >= 10) {
-                await Promise.allSettled(promises.splice(0, 10));
+            if (promises.length >= this.scanBatchSize) {
+                await Promise.allSettled(promises.splice(0, this.scanBatchSize));
             }
         }
 
-        // Wait for remaining probes
         if (promises.length > 0) {
             await Promise.allSettled(promises);
         }
+
+        state.cursor = current > state.endInt ? state.startInt : current;
     }
 
     async probeCluster(ip, port) {
@@ -311,7 +380,7 @@ class ClusterDiscovery extends EventEmitter {
                                     arch: stats.arch || 'unknown',
                                     cpus: stats.cpus || 0,
                                     totalMemory: stats.totalMemory || 0,
-                                    stats: stats.stats,
+                                    stats: stats.stats || stats,
                                     lastSeen: Date.now(),
                                     discovered_via: 'network_scan'
                                 });
@@ -342,6 +411,22 @@ class ClusterDiscovery extends EventEmitter {
             });
 
             req.end();
+        });
+    }
+
+    sendProbe(ip) {
+        if (!this.socket) return;
+
+        const message = JSON.stringify({
+            type: 'cluster_probe',
+            hostname: this.localInfo.hostname,
+            timestamp: Date.now()
+        });
+
+        this.socket.send(message, 0, message.length, this.port, ip, (err) => {
+            if (err && err.code !== 'EACCES') {
+                // Ignore permission errors
+            }
         });
     }
 

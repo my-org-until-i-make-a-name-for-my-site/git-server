@@ -307,7 +307,8 @@ Codara Platform
 - `GET /api/:owner/:repo/editor/status` - Check status
 
 ### Git HTTP Protocol
-- `/git/:owner/:repo/*` - Git smart HTTP protocol
+- `/:owner/:repo/*` - Git smart HTTP protocol (supports optional `.git`)
+- `/git/:owner/:repo/*` - Legacy Git smart HTTP protocol
 
 ## 🔧 Cluster Setup
 
@@ -357,7 +358,7 @@ The cluster will automatically:
 5. Clone and start coding!
 
 ```bash
-git clone http://localhost:3000/git/username/repo-name
+git clone http://localhost:3000/username/repo-name
 cd repo-name
 # Make changes
 git add .
