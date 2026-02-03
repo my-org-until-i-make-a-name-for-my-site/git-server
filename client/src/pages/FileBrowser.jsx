@@ -113,7 +113,8 @@ function FileBrowser({ user, logout }) {
       setIsEditing(false)
     } catch (err) {
       console.error('Failed to save file:', err)
-      alert('Failed to save file')
+      alert(message?.startsWith('Upload') ? 'Failed to upload file' : 'Failed to save file')
+      throw err
     } finally {
       setSaving(false)
     }
@@ -152,12 +153,19 @@ function FileBrowser({ user, logout }) {
 
   const handleUpload = async (event) => {
     const file = event.target.files?.[0]
-    if (!file) return
+    if (!file) {
+      alert('No file selected')
+      return
+    }
     const reader = new FileReader()
     reader.onload = async () => {
       const directoryPath = getDirectoryPath()
       const targetPath = directoryPath ? `${directoryPath}/${file.name}` : file.name
-      await saveFileContent(targetPath, reader.result?.toString() || '', `Upload ${file.name}`)
+      try {
+        await saveFileContent(targetPath, reader.result?.toString() || '', `Upload ${file.name}`)
+      } catch (error) {
+        alert('Failed to upload file')
+      }
       if (uploadInputRef.current) {
         uploadInputRef.current.value = ''
       }

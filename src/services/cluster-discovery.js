@@ -14,7 +14,6 @@ class ClusterDiscovery extends EventEmitter {
         this.scanInterval = null;
         this.localInfo = this.getLocalInfo();
         this.networkRanges = this.getNetworkRanges();
-        this.privateAddresses = this.networkRanges.flatMap(range => range.addresses || []);
         this.scanBatchSize = parseInt(process.env.CLUSTER_SCAN_BATCH || '64', 10);
         this.scanChunkSize = parseInt(process.env.CLUSTER_SCAN_CHUNK || '1024', 10);
         this.scanState = this.buildScanState();
@@ -329,6 +328,7 @@ class ClusterDiscovery extends EventEmitter {
                 continue;
             }
 
+            // Send UDP probe while HTTP probing to catch clusters that respond only via UDP.
             this.sendProbe(ip);
             promises.push(this.probeCluster(ip, clusterPort));
 

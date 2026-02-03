@@ -353,6 +353,10 @@ router.post('/:owner/:repo/contents/:branch/:filepath', authenticateToken, async
                     ? branch
                     : (branches.current || branches.all[0] || branch);
 
+                if (!branchName) {
+                    return res.status(400).json({ error: 'Branch not found' });
+                }
+
                 tempDir = path.join(repository.path, '..', `.edit-${repo}-${Date.now()}`);
                 await fs.ensureDir(tempDir);
 
@@ -419,6 +423,10 @@ router.delete('/:owner/:repo/contents/:branch/:filepath', authenticateToken, asy
                 const branchName = branches.all.includes(branch)
                     ? branch
                     : (branches.current || branches.all[0] || branch);
+
+                if (!branchName) {
+                    return res.status(400).json({ error: 'Branch not found' });
+                }
 
                 tempDir = path.join(repository.path, '..', `.edit-${repo}-${Date.now()}`);
                 await fs.ensureDir(tempDir);

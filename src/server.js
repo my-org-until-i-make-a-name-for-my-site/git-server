@@ -59,6 +59,7 @@ const PORT = config.get('server', 'port', process.env.PORT || 3000);
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+// Cookie parser still used by some third-party middleware but auth relies on Authorization header.
 app.use(cookieParser());
 
 // IP ban check middleware (applied globally)
