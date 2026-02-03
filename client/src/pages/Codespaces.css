@@ -3,14 +3,56 @@
   background: var(--bg-primary);
 }
 
+.codespaces-page.flame {
+  background: #1f1f1f;
+}
+
+.codespace-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: #181818;
+  border-bottom: 1px solid #2a2a2a;
+  color: #e0e0e0;
+}
+
+.codespace-brand {
+  font-weight: 700;
+}
+
+.codespace-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.codespace-meta {
+  font-size: 0.85rem;
+  color: #a7a7a7;
+}
+
+.codespace-actions .btn-primary {
+  background: #036cbc;
+  border: 1px solid #036cbc;
+}
+
+.codespace-actions .btn-primary:hover {
+  background: #0b6dc2;
+}
+
 .codespaces-layout {
   display: flex;
-  gap: 2rem;
-  padding: 2rem;
+  gap: 1.5rem;
+  padding: 1.5rem;
+}
+
+.flame-layout {
+  background: #1f1f1f;
 }
 
 .codespaces-sidebar {
-  width: 280px;
+  width: 300px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 8px;
@@ -18,8 +60,20 @@
   height: fit-content;
 }
 
-.codespaces-sidebar h2 {
+.flame-sidebar {
+  background: #181818;
+  border-color: #2a2a2a;
+  color: #a7a7a7;
+}
+
+.codespace-section {
+  margin-bottom: 1.5rem;
+}
+
+.codespaces-sidebar h2,
+.codespace-section h3 {
   margin-top: 0;
+  color: inherit;
 }
 
 .codespaces-create {
@@ -29,12 +83,20 @@
   margin-bottom: 1rem;
 }
 
-.codespaces-create input {
+.codespaces-create input,
+.codespace-section textarea {
   padding: 0.5rem;
   border-radius: 6px;
   border: 1px solid var(--border-color);
   background: var(--bg-primary);
   color: var(--text-primary);
+}
+
+.flame-sidebar input,
+.flame-sidebar textarea {
+  background: #1f1f1f;
+  border-color: #2a2a2a;
+  color: #a7a7a7;
 }
 
 .codespaces-list {
@@ -51,6 +113,10 @@
   border-radius: 6px;
   border: 1px solid transparent;
   background: var(--bg-primary);
+}
+
+.flame-sidebar .codespace-item {
+  background: #1f1f1f;
 }
 
 .codespace-item.active {
@@ -80,12 +146,72 @@
   text-align: left;
 }
 
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.icon-btn {
+  background: #2a2a2a;
+  color: #a7a7a7;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+.codespaces-page .btn-primary {
+  background: #036cbc;
+  border: 1px solid #036cbc;
+  color: #fff;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+}
+
+.codespaces-page .btn-primary:hover {
+  background: #0b6dc2;
+}
+
+.codespace-files {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.codespace-file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  background: #1f1f1f;
+  border: 1px solid #2a2a2a;
+}
+
+.codespace-file.active {
+  border-color: #036cbc;
+}
+
+.codespace-file button {
+  background: none;
+  border: none;
+  color: #a7a7a7;
+  cursor: pointer;
+}
+
 .codespaces-editor {
   flex: 1;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 1.5rem;
+}
+
+.flame-editor {
+  background: #1f1f1f;
+  border-color: #2a2a2a;
+  color: #a7a7a7;
 }
 
 .codespace-header {
@@ -95,17 +221,51 @@
   margin-bottom: 1rem;
 }
 
-.codespace-textarea {
-  width: 100%;
-  min-height: 500px;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 1rem;
-  font-family: 'Courier New', Consolas, monospace;
-  font-size: 0.95rem;
-  resize: vertical;
+.flame-header {
+  border-bottom: 1px solid #2a2a2a;
+  padding-bottom: 0.5rem;
+}
+
+.codespace-body {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 1rem;
+}
+
+.codespace-editor-pane {
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.editor-label {
+  padding: 0.5rem 0.75rem;
+  background: #181818;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.monaco-host {
+  height: 520px;
+}
+
+.codespace-preview-pane {
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-header {
+  padding: 0.5rem 0.75rem;
+  background: #181818;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.codespace-preview-pane iframe {
+  flex: 1;
+  background: #fff;
+  border: none;
 }
 
 .codespace-empty {
