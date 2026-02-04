@@ -9,5 +9,6 @@ function createRateLimiter(options = {}) {
     ...options
   });
 }
+createRateLimiter();
 
 module.exports = createRateLimiter;
