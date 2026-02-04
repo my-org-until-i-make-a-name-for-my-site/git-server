@@ -9,6 +9,18 @@ const fs = require('fs-extra');
 const router = express.Router();
 const REPOS_BASE_PATH = process.env.REPOS_BASE_PATH || './repos';
 
+const contentWriteLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 30,
+    message: 'Too many file changes, please wait and try again.'
+});
+
+const contentReadLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 120,
+    message: 'Too many file requests, please slow down.'
+});
+
 // Get commits for a repository
 router.get('/:owner/:repo/commits', async (req, res) => {
     const { owner, repo } = req.params;
@@ -321,18 +333,6 @@ router.get('/:owner/:repo/contents/:branch/:filepath', contentReadLimiter, async
             }
         }
     );
-});
-
-const contentWriteLimiter = createRateLimiter({
-    windowMs: 60 * 1000,
-    max: 30,
-    message: 'Too many file changes, please wait and try again.'
-});
-
-const contentReadLimiter = createRateLimiter({
-    windowMs: 60 * 1000,
-    max: 120,
-    message: 'Too many file requests, please slow down.'
 });
 
 // Create or update file content
