@@ -282,6 +282,19 @@ router.get('/:owner/:repo/tree/:branch/:filepath', async (req, res) => {
     );
 });
 
+// Rate limiters for content endpoints
+const contentWriteLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 30,
+    message: 'Too many file changes, please wait and try again.'
+});
+
+const contentReadLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 120,
+    message: 'Too many file requests, please slow down.'
+});
+
 // Get file content
 router.get('/:owner/:repo/contents/:branch/:filepath', contentReadLimiter, async (req, res) => {
     const { owner, repo, branch } = req.params;
@@ -321,18 +334,6 @@ router.get('/:owner/:repo/contents/:branch/:filepath', contentReadLimiter, async
             }
         }
     );
-});
-
-const contentWriteLimiter = createRateLimiter({
-    windowMs: 60 * 1000,
-    max: 30,
-    message: 'Too many file changes, please wait and try again.'
-});
-
-const contentReadLimiter = createRateLimiter({
-    windowMs: 60 * 1000,
-    max: 120,
-    message: 'Too many file requests, please slow down.'
 });
 
 // Create or update file content
