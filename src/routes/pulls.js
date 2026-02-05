@@ -310,6 +310,8 @@ router.get('/:owner/:repo/pulls/:number/mergeable', authenticateToken, async (re
                         return res.status(404).json({ error: 'Pull request not found' });
                     }
 
+                    let worktreePath = null;
+
                     try {
                         // Check if repository path exists
                         if (!fs.existsSync(repository.path)) {
@@ -332,40 +334,55 @@ router.get('/:owner/:repo/pulls/:number/mergeable', authenticateToken, async (re
                             });
                         }
 
-                        // Create a temporary branch to test merge
-                        const testBranch = `test-merge-${Date.now()}`;
+                        // Create a temporary worktree to test merge (works with bare repos)
+                        worktreePath = path.join('/tmp', `worktree-${Date.now()}-${Math.random().toString(36).substring(7)}`);
                         
                         try {
-                            await git.checkoutBranch(testBranch, pr.base_branch);
-                        } catch (branchError) {
-                            console.error('Failed to create test branch:', branchError);
+                            // Add worktree with base branch
+                            await git.raw(['worktree', 'add', worktreePath, pr.base_branch]);
+                        } catch (worktreeError) {
+                            console.error('Failed to create worktree:', worktreeError);
                             return res.status(500).json({ 
-                                error: 'Failed to create test branch',
+                                error: 'Failed to create test worktree',
                                 mergeable: null,
                                 has_conflicts: false
                             });
                         }
 
+                        // Use the worktree for merge testing
+                        const worktreeGit = simpleGit(worktreePath);
+
                         try {
                             // Try to merge
-                            await git.merge([pr.head_branch, '--no-commit', '--no-ff']);
+                            await worktreeGit.merge([pr.head_branch, '--no-commit', '--no-ff']);
 
                             // Reset the merge
-                            await git.reset(['--merge']);
-                            await git.checkout(pr.base_branch);
-                            await git.branch(['-D', testBranch]);
+                            await worktreeGit.reset(['--merge']);
 
                             res.json({ mergeable: true, has_conflicts: false });
                         } catch (mergeError) {
                             // Conflicts detected
-                            await git.merge(['--abort']).catch(() => { });
-                            await git.checkout(pr.base_branch).catch(() => { });
-                            await git.branch(['-D', testBranch]).catch(() => { });
+                            await worktreeGit.merge(['--abort']).catch(() => { });
 
                             res.json({ mergeable: false, has_conflicts: true });
+                        } finally {
+                            // Clean up the worktree
+                            try {
+                                await git.raw(['worktree', 'remove', worktreePath, '--force']);
+                            } catch (cleanupError) {
+                                console.error('Failed to cleanup worktree:', cleanupError);
+                                // Try to remove directory manually if worktree removal fails
+                                await fs.remove(worktreePath).catch(() => {});
+                            }
                         }
                     } catch (error) {
                         console.error('Mergeable check error:', error);
+                        // Cleanup worktree if it was created
+                        if (worktreePath) {
+                            const git = simpleGit(repository.path);
+                            await git.raw(['worktree', 'remove', worktreePath, '--force']).catch(() => {});
+                            await fs.remove(worktreePath).catch(() => {});
+                        }
                         res.status(500).json({ 
                             error: 'Failed to check merge status',
                             mergeable: null,
