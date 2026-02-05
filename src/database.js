@@ -309,6 +309,8 @@ function initDatabase() {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL UNIQUE,
             ai_usage REAL DEFAULT 0,
+            ai_usage_limit REAL DEFAULT 100,
+            ai_usage_month TEXT,
             email_notifications INTEGER DEFAULT 1,
             theme_preference TEXT DEFAULT 'dark',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -396,6 +398,50 @@ function initDatabase() {
           )
         `);
 
+        // AI task sessions
+        db.run(`
+          CREATE TABLE IF NOT EXISTS ai_task_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            chat_id INTEGER,
+            status TEXT DEFAULT 'active',
+            duration_seconds INTEGER DEFAULT 0,
+            started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            ended_at DATETIME,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (chat_id) REFERENCES ai_chats(id)
+          )
+        `);
+
+        // AI task session usage tracking
+        db.run(`
+          CREATE TABLE IF NOT EXISTS ai_task_usage (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            month TEXT NOT NULL,
+            total_seconds INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            UNIQUE(user_id, month)
+          )
+        `);
+
+        // AI chat linked repositories
+        db.run(`
+          CREATE TABLE IF NOT EXISTS ai_chat_repos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chat_id INTEGER NOT NULL,
+            repo_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            linked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (chat_id) REFERENCES ai_chats(id),
+            FOREIGN KEY (repo_id) REFERENCES repositories(id),
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            UNIQUE(chat_id, repo_id)
+          )
+        `);
+
         // Workflow runs
         db.run(`
           CREATE TABLE IF NOT EXISTS workflow_runs (
@@ -423,6 +469,30 @@ function initDatabase() {
             FOREIGN KEY (run_id) REFERENCES workflow_runs(id)
           )
         `);
+
+        // Add new columns to user_settings if they don't exist (migration)
+        db.all(`PRAGMA table_info(user_settings)`, (err, columns) => {
+            if (err) {
+                console.error('Error checking user_settings columns:', err);
+                return;
+            }
+            
+            const columnNames = columns.map(col => col.name);
+            
+            if (!columnNames.includes('ai_usage_limit')) {
+                db.run(`ALTER TABLE user_settings ADD COLUMN ai_usage_limit REAL DEFAULT 100`, (err) => {
+                    if (err) console.error('Error adding ai_usage_limit column:', err);
+                    else console.log('Added ai_usage_limit column to user_settings');
+                });
+            }
+            
+            if (!columnNames.includes('ai_usage_month')) {
+                db.run(`ALTER TABLE user_settings ADD COLUMN ai_usage_month TEXT`, (err) => {
+                    if (err) console.error('Error adding ai_usage_month column:', err);
+                    else console.log('Added ai_usage_month column to user_settings');
+                });
+            }
+        });
 
         console.log('Database schema initialized');
     });

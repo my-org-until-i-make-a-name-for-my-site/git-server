@@ -311,11 +311,40 @@ router.get('/:owner/:repo/pulls/:number/mergeable', authenticateToken, async (re
                     }
 
                     try {
+                        // Check if repository path exists
+                        if (!fs.existsSync(repository.path)) {
+                            return res.status(500).json({ 
+                                error: 'Repository path not found',
+                                mergeable: null,
+                                has_conflicts: false
+                            });
+                        }
+
                         const git = simpleGit(repository.path);
+
+                        // Verify branches exist
+                        const branches = await git.branch();
+                        if (!branches.all.includes(pr.head_branch) || !branches.all.includes(pr.base_branch)) {
+                            return res.json({ 
+                                mergeable: false, 
+                                has_conflicts: true,
+                                error: 'One or more branches not found'
+                            });
+                        }
 
                         // Create a temporary branch to test merge
                         const testBranch = `test-merge-${Date.now()}`;
-                        await git.checkoutBranch(testBranch, pr.base_branch);
+                        
+                        try {
+                            await git.checkoutBranch(testBranch, pr.base_branch);
+                        } catch (branchError) {
+                            console.error('Failed to create test branch:', branchError);
+                            return res.status(500).json({ 
+                                error: 'Failed to create test branch',
+                                mergeable: null,
+                                has_conflicts: false
+                            });
+                        }
 
                         try {
                             // Try to merge
@@ -330,14 +359,19 @@ router.get('/:owner/:repo/pulls/:number/mergeable', authenticateToken, async (re
                         } catch (mergeError) {
                             // Conflicts detected
                             await git.merge(['--abort']).catch(() => { });
-                            await git.checkout(pr.base_branch);
+                            await git.checkout(pr.base_branch).catch(() => { });
                             await git.branch(['-D', testBranch]).catch(() => { });
 
                             res.json({ mergeable: false, has_conflicts: true });
                         }
                     } catch (error) {
                         console.error('Mergeable check error:', error);
-                        res.status(500).json({ error: 'Failed to check merge status' });
+                        res.status(500).json({ 
+                            error: 'Failed to check merge status',
+                            mergeable: null,
+                            has_conflicts: false,
+                            details: error.message
+                        });
                     }
                 }
             );

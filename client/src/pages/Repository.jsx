@@ -444,7 +444,7 @@ function Repository({ user, logout, tab = 'code' }) {
                                 </div>
                             ) : (
                                 issues.map(issue => (
-                                    <div key={issue.id} className="issue-item">
+                                    <Link key={issue.id} to={`/${owner}/${repo}/issues/${issue.issue_number}`} className="issue-item">
                                         <div className="issue-title">
                                             <span className="issue-number">#{issue.issue_number}</span>
                                             <span className={`issue-state ${issue.state}`}>{issue.state}</span>
@@ -453,7 +453,7 @@ function Repository({ user, logout, tab = 'code' }) {
                                         <div className="issue-meta">
                                             Opened by {issue.author_name} • {new Date(issue.created_at).toLocaleDateString()}
                                         </div>
-                                    </div>
+                                    </Link>
                                 ))
                             )}
                         </div>
@@ -506,7 +506,7 @@ function Repository({ user, logout, tab = 'code' }) {
                                 </div>
                             ) : (
                                 pulls.map(pr => (
-                                    <div key={pr?.id ?? pr?.pr_number ?? pr?.number} className="pr-item">
+                                    <Link key={pr?.id ?? pr?.pr_number ?? pr?.number} to={`/${owner}/${repo}/pulls/${pr?.number ?? pr?.pr_number}`} className="pr-item">
                                         <div className="pr-title">
                                             <span className="pr-number">#{pr?.number ?? pr?.pr_number ?? '—'}</span>
                                             <span className={`pr-state ${pr?.state || 'open'}`}>{pr?.state || 'open'}</span>
@@ -515,7 +515,7 @@ function Repository({ user, logout, tab = 'code' }) {
                                         <div className="pr-meta">
                                             {pr?.head_branch} → {pr?.base_branch} • by {pr?.author ?? pr?.author_name ?? 'unknown'} • {pr?.created_at ? new Date(pr.created_at).toLocaleDateString() : 'unknown date'}
                                         </div>
-                                    </div>
+                                    </Link>
                                 ))
                             )}
                         </div>

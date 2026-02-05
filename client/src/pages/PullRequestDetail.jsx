@@ -47,6 +47,18 @@ function PullRequestDetail({ user, logout }) {
             const response = await fetch(`/api/${owner}/${repo}/pulls/${number}/mergeable`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
+            
+            if (!response.ok) {
+                console.error('Failed to check mergeability:', response.statusText)
+                setMergeStatus({ 
+                    mergeable: null, 
+                    has_conflicts: false, 
+                    checking: false,
+                    error: 'Failed to check merge status'
+                })
+                return
+            }
+            
             const data = await response.json()
             setMergeStatus({
                 mergeable: data.mergeable,
@@ -55,7 +67,12 @@ function PullRequestDetail({ user, logout }) {
             })
         } catch (err) {
             console.error('Failed to check mergeability:', err)
-            setMergeStatus({ mergeable: false, checking: false })
+            setMergeStatus({ 
+                mergeable: null, 
+                has_conflicts: false, 
+                checking: false,
+                error: 'Failed to check merge status'
+            })
         }
     }
 
@@ -412,8 +429,19 @@ function PullRequestDetail({ user, logout }) {
                                                 <span>{merging ? 'Merging...' : 'Merge pull request'}</span>
                                             </button>
                                         </div>
+                                    ) : mergeStatus.error ? (
+                                        <div className="merge-status-error">
+                                            <p style={{ color: '#dc3545' }}>⚠️ {mergeStatus.error}</p>
+                                            <button
+                                                onClick={checkMergeability}
+                                                className="sidebar-btn"
+                                                style={{ width: '100%', marginTop: '0.5rem' }}
+                                            >
+                                                Retry
+                                            </button>
+                                        </div>
                                     ) : (
-                                        <p style={{ color: '#ffc107' }}>Unable to check merge status</p>
+                                        <p style={{ color: '#ffc107' }}>Unable to determine merge status</p>
                                     )}
                                 </>
                             )}

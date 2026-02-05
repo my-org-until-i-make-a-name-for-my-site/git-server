@@ -81,15 +81,39 @@ router.put('/', authenticateToken, (req, res) => {
 // Get AI usage
 router.get('/usage', authenticateToken, (req, res) => {
     const userId = req.user.id;
+    const currentMonth = new Date().toISOString().substring(0, 7);
 
     db.get(
-        'SELECT ai_usage FROM user_settings WHERE user_id = ?',
+        'SELECT ai_usage, ai_usage_limit, ai_usage_month FROM user_settings WHERE user_id = ?',
         [userId],
         (err, row) => {
             if (err) {
                 return res.status(500).json({ error: 'Failed to load usage' });
             }
-            res.json({ ai_usage: row?.ai_usage || 0 });
+            
+            // Reset if month has changed
+            if (row && row.ai_usage_month !== currentMonth) {
+                db.run(
+                    'UPDATE user_settings SET ai_usage = 0, ai_usage_month = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?',
+                    [currentMonth, userId],
+                    (err) => {
+                        if (err) {
+                            return res.status(500).json({ error: 'Failed to reset usage' });
+                        }
+                        res.json({ 
+                            ai_usage: 0, 
+                            ai_usage_limit: row.ai_usage_limit || 100,
+                            ai_usage_month: currentMonth
+                        });
+                    }
+                );
+            } else {
+                res.json({ 
+                    ai_usage: row?.ai_usage || 0,
+                    ai_usage_limit: row?.ai_usage_limit || 100,
+                    ai_usage_month: row?.ai_usage_month || currentMonth
+                });
+            }
         }
     );
 });
