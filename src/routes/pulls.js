@@ -4,6 +4,7 @@ const { authenticateToken } = require('../middleware/auth');
 const simpleGit = require('simple-git');
 const path = require('path');
 const fs = require('fs-extra');
+const os = require('os');
 const createRateLimiter = require('../utils/rate-limit');
 
 const router = express.Router();
@@ -335,7 +336,7 @@ router.get('/:owner/:repo/pulls/:number/mergeable', authenticateToken, async (re
                         }
 
                         // Create a temporary worktree to test merge (works with bare repos)
-                        worktreePath = path.join('/tmp', `worktree-${Date.now()}-${Math.random().toString(36).substring(7)}`);
+                        worktreePath = path.join(os.tmpdir(), `worktree-${Date.now()}-${Math.random().toString(36).substring(7)}`);
                         
                         try {
                             // Add worktree with base branch
@@ -379,7 +380,6 @@ router.get('/:owner/:repo/pulls/:number/mergeable', authenticateToken, async (re
                         console.error('Mergeable check error:', error);
                         // Cleanup worktree if it was created
                         if (worktreePath) {
-                            const git = simpleGit(repository.path);
                             await git.raw(['worktree', 'remove', worktreePath, '--force']).catch(() => {});
                             await fs.remove(worktreePath).catch(() => {});
                         }
