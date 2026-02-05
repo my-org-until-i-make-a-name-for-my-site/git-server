@@ -64,6 +64,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(checkIpBan);
 
 app.use(express.static(path.join(__dirname, '../dist')));
+// Serve codespace-editor static files
+app.use('/codespace-editor', express.static(path.join(__dirname, '../client/src/pages/codespace-editor/src')));
 const distPath = path.join(__dirname, '../dist');
 
 app.get(/(.*)/, (req, res, next) => {

@@ -156,9 +156,6 @@ router.put('/users/:username/role', authenticateToken, isAdmin, (req, res) => {
         }
     );
 });
-        }
-    );
-});
 
 // Delete user (admin only)
 router.delete('/users/:username', authenticateToken, isAdmin, (req, res) => {

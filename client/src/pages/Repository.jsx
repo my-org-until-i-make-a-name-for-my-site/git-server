@@ -183,6 +183,34 @@ function Repository({ user, logout, tab = 'code' }) {
         }
     }
 
+    const createCodespace = () => {
+        try {
+            const token = localStorage.getItem('token')
+            fetch(`/api/codespaces`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: `${owner}-${repo}`,
+                    repository: `${owner}/${repo}`,
+                    branch: currentBranch
+                })
+            }).then(response => response.json())
+                .then(data => {
+                    if (data.codespace) {
+                        window.location.href = `/codespaces/${encodeURIComponent(data.codespace.name)}`
+                    } else {
+                        alert('Failed to create codespace')
+                    }
+                })
+        } catch (err) {
+            console.error('Failed to create codespace:', err)
+            alert('Failed to create codespace')
+        }
+    }
+
     const createIssue = (title, body) => {
         try {
             const token = localStorage.getItem('token')
@@ -376,7 +404,7 @@ function Repository({ user, logout, tab = 'code' }) {
                                 <div className="codespace-actions">
                                     <button
                                         className="create-issue-btn"
-                                        onClick={() => window.location.href = `/codespaces/${encodeURIComponent(`${owner}-${repo}`)}`}
+                                        onClick={createCodespace}
                                     >
                                         Run Codespace
                                     </button>

@@ -244,6 +244,17 @@ function Codespaces({ user, logout }) {
         <div className="codespace-brand">Flame Codespaces</div>
         <div className="codespace-actions">
           <span className="codespace-meta">Infinite usage for your account</span>
+          {activeName && (
+            <a 
+              href={`/codespace-editor/?codespace=${encodeURIComponent(activeName)}`} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="btn-secondary"
+              style={{ marginRight: '10px' }}
+            >
+              Open in Full Editor
+            </a>
+          )}
           <button className="btn-primary" onClick={saveCodespace} disabled={saving || !activeName}>
             {saving ? 'Saving...' : 'Save All'}
           </button>
