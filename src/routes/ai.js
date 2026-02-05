@@ -535,7 +535,7 @@ router.post('/chats/:chatId/messages', authenticateToken, async (req, res) => {
         const sessionId = activeSession?.id;
 
         // Build initial prompt with repository context
-        const fullPrompt = await buildPromptFromMessages(enrichedMessages, isTaskSession, chatId);
+        let fullPrompt = await buildPromptFromMessages(enrichedMessages, isTaskSession, chatId);
         
         // Send to AI and process response iteratively
         let aiText = '';
@@ -574,10 +574,6 @@ router.post('/chats/:chatId/messages', authenticateToken, async (req, res) => {
                 attachments: []
             });
 
-            // Rebuild prompt with new messages including command results
-            const updatedPrompt = await buildPromptFromMessages(enrichedMessages, isTaskSession, chatId);
-            
-            // Check if AI has more to say after seeing results
             // Add a prompt asking AI to continue
             enrichedMessages.push({
                 id: `system-continue-${Date.now()}`,
@@ -586,7 +582,7 @@ router.post('/chats/:chatId/messages', authenticateToken, async (req, res) => {
                 attachments: []
             });
 
-            // Update fullPrompt for next iteration
+            // Rebuild prompt for next iteration
             fullPrompt = await buildPromptFromMessages(enrichedMessages, isTaskSession, chatId);
         }
 
