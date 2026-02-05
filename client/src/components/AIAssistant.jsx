@@ -17,6 +17,9 @@ function AIAssistant({ user }) {
     const [taskSessionId, setTaskSessionId] = useState(null)
     const [taskUsage, setTaskUsage] = useState(null)
     const [activeTab, setActiveTab] = useState('chat') // 'chat' or 'task'
+    const [linkedRepos, setLinkedRepos] = useState([])
+    const [showRepoLink, setShowRepoLink] = useState(false)
+    const [repoLinkInput, setRepoLinkInput] = useState('')
 
     useEffect(() => {
         if (isOpen) {
@@ -29,6 +32,7 @@ function AIAssistant({ user }) {
     useEffect(() => {
         if (activeChatId) {
             loadChat(activeChatId)
+            loadLinkedRepos(activeChatId)
         }
     }, [activeChatId])
 
@@ -56,6 +60,79 @@ function AIAssistant({ user }) {
             setTaskUsage(data)
         } catch (err) {
             console.error('Failed to load task usage:', err)
+        }
+    }
+
+    const loadLinkedRepos = async (chatId) => {
+        try {
+            const token = localStorage.getItem('token')
+            const res = await fetch(`/api/ai/chats/${chatId}/repos`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            const data = await res.json()
+            setLinkedRepos(data.repos || [])
+        } catch (err) {
+            console.error('Failed to load linked repos:', err)
+        }
+    }
+
+    const linkRepository = async () => {
+        if (!repoLinkInput.trim() || !activeChatId) return
+        
+        // Parse owner/repo format
+        const parts = repoLinkInput.trim().split('/')
+        if (parts.length !== 2) {
+            alert('Invalid format. Use: username/reponame')
+            return
+        }
+        
+        const [owner, repo] = parts
+        
+        try {
+            const token = localStorage.getItem('token')
+            const res = await fetch(`/api/ai/chats/${activeChatId}/repos`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ owner, repo })
+            })
+            const data = await res.json()
+            
+            if (res.ok) {
+                setRepoLinkInput('')
+                setShowRepoLink(false)
+                loadLinkedRepos(activeChatId)
+                alert(`Repository ${owner}/${repo} linked successfully! The AI can now see all the code.`)
+            } else {
+                alert(data.error || 'Failed to link repository')
+            }
+        } catch (err) {
+            console.error('Failed to link repository:', err)
+            alert('Failed to link repository')
+        }
+    }
+
+    const unlinkRepository = async (repoId) => {
+        if (!confirm('Unlink this repository from the chat?')) return
+        
+        try {
+            const token = localStorage.getItem('token')
+            const res = await fetch(`/api/ai/chats/${activeChatId}/repos/${repoId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            
+            if (res.ok) {
+                loadLinkedRepos(activeChatId)
+            } else {
+                const data = await res.json()
+                alert(data.error || 'Failed to unlink repository')
+            }
+        } catch (err) {
+            console.error('Failed to unlink repository:', err)
+            alert('Failed to unlink repository')
         }
     }
 
@@ -162,7 +239,8 @@ function AIAssistant({ user }) {
             if (res.ok) {
                 setTaskSessionActive(true)
                 setTaskSessionId(data.sessionId)
-                alert(`Task session started! You have ${data.remainingHours} hours remaining this month.`)
+                alert(`Task session started! You have ${data.remainingHours} hours remaining this month.\n\nThe AI now has:\n- Terminal access\n- Browser search capability\n- Read access to all repos\n- Push access to your repos\n\nUse the Chat tab to interact with the AI.`)
+                setActiveTab('chat') // Switch to chat tab
             } else {
                 alert(data.error || 'Failed to start task session')
             }
@@ -312,6 +390,12 @@ function AIAssistant({ user }) {
                         </div>
 
                         <div className="ai-usage-bar">
+                            {taskSessionActive && (
+                                <div className="ai-task-session-badge">
+                                    <span className="badge-icon">⚡</span>
+                                    <span>Task Session Active - Terminal & Browser Access Enabled</span>
+                                </div>
+                            )}
                             <div className="ai-usage-label">
                                 <span>Chat Usage</span>
                                 <span>{usage.toFixed(2)}% / {usageLimit}%</span>
@@ -383,6 +467,27 @@ function AIAssistant({ user }) {
                                     </div>
 
                                     <div className="ai-main-content">
+                                        {/* Linked Repositories Section */}
+                                        {linkedRepos.length > 0 && (
+                                            <div className="ai-linked-repos">
+                                                <div className="ai-linked-repos-header">
+                                                    <span>📁 Linked Repos:</span>
+                                                    {linkedRepos.map(repo => (
+                                                        <div key={repo.id} className="ai-repo-tag">
+                                                            <span>{repo.owner}/{repo.name}</span>
+                                                            <button 
+                                                                onClick={() => unlinkRepository(repo.id)}
+                                                                className="ai-repo-unlink"
+                                                                title="Unlink repository"
+                                                            >
+                                                                ×
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
                                         <div className="ai-chat-messages">
                                             {messages.length === 0 ? (
                                                 <div className="ai-chat-empty">Start a conversation to see messages here.</div>
@@ -406,6 +511,31 @@ function AIAssistant({ user }) {
                                         </div>
 
                                         <form onSubmit={handleSubmit} className="ai-assistant-form">
+                                            <div className="ai-form-actions">
+                                                <button
+                                                    type="button"
+                                                    className="ai-link-repo-btn"
+                                                    onClick={() => setShowRepoLink(!showRepoLink)}
+                                                    title="Link a repository"
+                                                >
+                                                    🔗 Link Repo
+                                                </button>
+                                            </div>
+                                            
+                                            {showRepoLink && (
+                                                <div className="ai-repo-link-input">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="username/repository"
+                                                        value={repoLinkInput}
+                                                        onChange={(e) => setRepoLinkInput(e.target.value)}
+                                                        onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), linkRepository())}
+                                                    />
+                                                    <button type="button" onClick={linkRepository}>Add</button>
+                                                    <button type="button" onClick={() => setShowRepoLink(false)}>Cancel</button>
+                                                </div>
+                                            )}
+                                            
                                             <textarea
                                                 className="ai-prompt-input"
                                                 placeholder="Ask AI to help with code generation, explanations, debugging, or improvements..."

@@ -427,6 +427,21 @@ function initDatabase() {
           )
         `);
 
+        // AI chat linked repositories
+        db.run(`
+          CREATE TABLE IF NOT EXISTS ai_chat_repos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chat_id INTEGER NOT NULL,
+            repo_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            linked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (chat_id) REFERENCES ai_chats(id),
+            FOREIGN KEY (repo_id) REFERENCES repositories(id),
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            UNIQUE(chat_id, repo_id)
+          )
+        `);
+
         // Workflow runs
         db.run(`
           CREATE TABLE IF NOT EXISTS workflow_runs (
