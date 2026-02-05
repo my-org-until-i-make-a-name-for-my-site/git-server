@@ -12,11 +12,16 @@ function AIAssistant({ user }) {
     const [activeChatId, setActiveChatId] = useState(null)
     const [messages, setMessages] = useState([])
     const [attachments, setAttachments] = useState([])
+    const [taskSessionActive, setTaskSessionActive] = useState(false)
+    const [taskSessionId, setTaskSessionId] = useState(null)
+    const [taskUsage, setTaskUsage] = useState(null)
+    const [activeTab, setActiveTab] = useState('chat') // 'chat' or 'task'
 
     useEffect(() => {
         if (isOpen) {
             loadUsage()
             loadChats()
+            loadTaskUsage()
         }
     }, [isOpen])
 
@@ -36,6 +41,19 @@ function AIAssistant({ user }) {
             setUsage(data.ai_usage || 0)
         } catch (err) {
             console.error('Failed to load usage:', err)
+        }
+    }
+
+    const loadTaskUsage = async () => {
+        try {
+            const token = localStorage.getItem('token')
+            const res = await fetch('/api/ai/task-sessions/usage', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            const data = await res.json()
+            setTaskUsage(data)
+        } catch (err) {
+            console.error('Failed to load task usage:', err)
         }
     }
 
@@ -123,6 +141,57 @@ function AIAssistant({ user }) {
             ))
         } catch (err) {
             console.error('Failed to update chat title:', err)
+        }
+    }
+
+    const startTaskSession = async () => {
+        try {
+            const token = localStorage.getItem('token')
+            const res = await fetch('/api/ai/task-sessions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ chatId: activeChatId })
+            })
+            const data = await res.json()
+            
+            if (res.ok) {
+                setTaskSessionActive(true)
+                setTaskSessionId(data.sessionId)
+                alert(`Task session started! You have ${data.remainingHours} hours remaining this month.`)
+            } else {
+                alert(data.error || 'Failed to start task session')
+            }
+        } catch (err) {
+            console.error('Failed to start task session:', err)
+            alert('Failed to start task session')
+        }
+    }
+
+    const endTaskSession = async () => {
+        if (!taskSessionId) return
+        
+        try {
+            const token = localStorage.getItem('token')
+            const res = await fetch(`/api/ai/task-sessions/${taskSessionId}/end`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            const data = await res.json()
+            
+            if (res.ok) {
+                setTaskSessionActive(false)
+                setTaskSessionId(null)
+                loadTaskUsage()
+                alert(`Task session ended. Duration: ${data.durationMinutes} minutes`)
+            } else {
+                alert(data.error || 'Failed to end task session')
+            }
+        } catch (err) {
+            console.error('Failed to end task session:', err)
+            alert('Failed to end task session')
         }
     }
 
@@ -242,7 +311,7 @@ function AIAssistant({ user }) {
 
                         <div className="ai-usage-bar">
                             <div className="ai-usage-label">
-                                <span>AI Usage</span>
+                                <span>Chat Usage</span>
                                 <span>{usage.toFixed(2)}% / 100%</span>
                             </div>
                             <div className="ai-usage-progress">
@@ -251,86 +320,180 @@ function AIAssistant({ user }) {
                                     style={{ width: `${Math.min(usage, 100)}%` }}
                                 />
                             </div>
+                            {taskUsage && (
+                                <>
+                                    <div className="ai-usage-label" style={{ marginTop: '0.5rem' }}>
+                                        <span>Task Sessions (Monthly)</span>
+                                        <span>{taskUsage.usedHours}h / {taskUsage.maxHours}h</span>
+                                    </div>
+                                    <div className="ai-usage-progress">
+                                        <div
+                                            className="ai-usage-fill"
+                                            style={{ 
+                                                width: `${Math.min((taskUsage.usedHours / taskUsage.maxHours) * 100, 100)}%`,
+                                                background: 'linear-gradient(90deg, #28a745, #20c997)'
+                                            }}
+                                        />
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        <div className="ai-tabs">
+                            <button 
+                                className={`ai-tab ${activeTab === 'chat' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('chat')}
+                            >
+                                Chat
+                            </button>
+                            <button 
+                                className={`ai-tab ${activeTab === 'task' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('task')}
+                            >
+                                Task Sessions
+                            </button>
                         </div>
 
                         <div className="ai-assistant-body">
-                            <div className="ai-chat-list">
-                                <div className="ai-chat-list-header">
-                                    <h4>Chats</h4>
-                                    <button className="ai-new-chat-btn" onClick={() => createChat()}>New</button>
-                                </div>
-                                <div className="ai-chat-items">
-                                    {chats.length === 0 ? (
-                                        <div className="ai-chat-empty">No chats yet</div>
-                                    ) : (
-                                        chats.map(chat => (
-                                            <button
-                                                key={chat.id}
-                                                className={`ai-chat-item ${activeChatId === chat.id ? 'active' : ''}`}
-                                                onClick={() => setActiveChatId(chat.id)}
-                                                title={chat.title}
-                                            >
-                                                {chat.title}
-                                            </button>
-                                        ))
-                                    )}
-                                </div>
-                            </div>
+                            {activeTab === 'chat' && (
+                                <>
+                                    <div className="ai-chat-list">
+                                        <div className="ai-chat-list-header">
+                                            <h4>Chats</h4>
+                                            <button className="ai-new-chat-btn" onClick={() => createChat()}>New</button>
+                                        </div>
+                                        <div className="ai-chat-items">
+                                            {chats.length === 0 ? (
+                                                <div className="ai-chat-empty">No chats yet</div>
+                                            ) : (
+                                                chats.map(chat => (
+                                                    <button
+                                                        key={chat.id}
+                                                        className={`ai-chat-item ${activeChatId === chat.id ? 'active' : ''}`}
+                                                        onClick={() => setActiveChatId(chat.id)}
+                                                        title={chat.title}
+                                                    >
+                                                        {chat.title}
+                                                    </button>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
 
-                            <div className="ai-main-content">
-                                <div className="ai-chat-messages">
-                                    {messages.length === 0 ? (
-                                        <div className="ai-chat-empty">Start a conversation to see messages here.</div>
-                                    ) : (
-                                        messages.map(msg => (
-                                            <div key={msg.id} className={`ai-chat-message ${msg.role}`}>
-                                                <div className="ai-chat-role">{msg.role === 'assistant' ? 'Assistant' : 'You'}</div>
-                                                <div className="ai-chat-content">{msg.content}</div>
-                                                {msg.attachments && msg.attachments.length > 0 && (
-                                                    <div className="ai-chat-attachments">
-                                                        {msg.attachments.map(att => (
-                                                            <div key={att.id || att.name} className="ai-chat-attachment">
-                                                                {att.name}
+                                    <div className="ai-main-content">
+                                        <div className="ai-chat-messages">
+                                            {messages.length === 0 ? (
+                                                <div className="ai-chat-empty">Start a conversation to see messages here.</div>
+                                            ) : (
+                                                messages.map(msg => (
+                                                    <div key={msg.id} className={`ai-chat-message ${msg.role}`}>
+                                                        <div className="ai-chat-role">{msg.role === 'assistant' ? 'Assistant' : 'You'}</div>
+                                                        <div className="ai-chat-content">{msg.content}</div>
+                                                        {msg.attachments && msg.attachments.length > 0 && (
+                                                            <div className="ai-chat-attachments">
+                                                                {msg.attachments.map(att => (
+                                                                    <div key={att.id || att.name} className="ai-chat-attachment">
+                                                                        {att.name}
+                                                                    </div>
+                                                                ))}
                                                             </div>
+                                                        )}
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+
+                                        <form onSubmit={handleSubmit} className="ai-assistant-form">
+                                            <textarea
+                                                className="ai-prompt-input"
+                                                placeholder="Ask AI to help with code generation, explanations, debugging, or improvements..."
+                                                value={prompt}
+                                                onChange={(e) => setPrompt(e.target.value)}
+                                                rows="4"
+                                            />
+                                            <div className="ai-attachments">
+                                                <input
+                                                    type="file"
+                                                    multiple
+                                                    onChange={(e) => setAttachments(Array.from(e.target.files || []))}
+                                                />
+                                                {attachments.length > 0 && (
+                                                    <div className="ai-attachment-list">
+                                                        {attachments.map(file => (
+                                                            <span key={file.name} className="ai-attachment-chip">{file.name}</span>
                                                         ))}
                                                     </div>
                                                 )}
                                             </div>
-                                        ))
-                                    )}
-                                </div>
+                                            <button
+                                                type="submit"
+                                                className="ai-submit-btn"
+                                                disabled={loading || !prompt.trim()}
+                                            >
+                                                {loading ? 'Generating...' : 'Generate'}
+                                            </button>
+                                        </form>
+                                    </div>
+                                </>
+                            )}
 
-                                <form onSubmit={handleSubmit} className="ai-assistant-form">
-                                    <textarea
-                                        className="ai-prompt-input"
-                                        placeholder="Ask AI to help with code generation, explanations, debugging, or improvements..."
-                                        value={prompt}
-                                        onChange={(e) => setPrompt(e.target.value)}
-                                        rows="4"
-                                    />
-                                    <div className="ai-attachments">
-                                        <input
-                                            type="file"
-                                            multiple
-                                            onChange={(e) => setAttachments(Array.from(e.target.files || []))}
-                                        />
-                                        {attachments.length > 0 && (
-                                            <div className="ai-attachment-list">
-                                                {attachments.map(file => (
-                                                    <span key={file.name} className="ai-attachment-chip">{file.name}</span>
-                                                ))}
+                            {activeTab === 'task' && (
+                                <div className="ai-task-session-container">
+                                    <div className="ai-task-info">
+                                        <h3>AI Task Sessions</h3>
+                                        <p>
+                                            Task sessions grant the AI access to a terminal and repository operations.
+                                            The AI can read all repositories and push to repositories you own.
+                                        </p>
+                                        {taskUsage && (
+                                            <div className="ai-task-usage-info">
+                                                <p><strong>Monthly Limit:</strong> {taskUsage.maxHours} hours</p>
+                                                <p><strong>Used This Month:</strong> {taskUsage.usedHours} hours</p>
+                                                <p><strong>Remaining:</strong> {taskUsage.remainingHours} hours</p>
                                             </div>
                                         )}
                                     </div>
-                                    <button
-                                        type="submit"
-                                        className="ai-submit-btn"
-                                        disabled={loading || !prompt.trim()}
-                                    >
-                                        {loading ? 'Generating...' : 'Generate'}
-                                    </button>
-                                </form>
-                            </div>
+
+                                    {!taskSessionActive ? (
+                                        <div className="ai-task-controls">
+                                            <button 
+                                                className="ai-task-btn start"
+                                                onClick={startTaskSession}
+                                                disabled={taskUsage && taskUsage.remainingHours <= 0}
+                                            >
+                                                Start Task Session
+                                            </button>
+                                            {taskUsage && taskUsage.remainingHours <= 0 && (
+                                                <p className="ai-task-warning">You have reached your monthly task session limit.</p>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="ai-task-controls">
+                                            <div className="ai-task-active">
+                                                <p><strong>Task Session Active</strong></p>
+                                                <p>The AI now has access to terminal and repository operations.</p>
+                                            </div>
+                                            <button 
+                                                className="ai-task-btn end"
+                                                onClick={endTaskSession}
+                                            >
+                                                End Task Session
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    <div className="ai-task-permissions">
+                                        <h4>Permissions</h4>
+                                        <ul>
+                                            <li>✓ Terminal access (bash commands)</li>
+                                            <li>✓ Read access to all repositories in the database</li>
+                                            <li>✓ Push access to repositories you own</li>
+                                            <li>✗ No access to repositories owned by others</li>
+                                            <li>✗ No system-level access</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

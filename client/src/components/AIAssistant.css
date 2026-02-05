@@ -353,3 +353,144 @@
 .ai-response-content img {
     border-radius: 6px;
 }
+
+.ai-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 1.5rem;
+    background: var(--bg-secondary);
+}
+
+.ai-tab {
+    padding: 0.75rem 1.5rem;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.ai-tab.active {
+    color: var(--text-link);
+    border-bottom-color: var(--text-link);
+}
+
+.ai-tab:hover {
+    color: var(--text-primary);
+}
+
+.ai-task-session-container {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+.ai-task-info {
+    margin-bottom: 2rem;
+}
+
+.ai-task-info h3 {
+    margin: 0 0 1rem 0;
+    color: var(--text-primary);
+}
+
+.ai-task-info p {
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.ai-task-usage-info {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+}
+
+.ai-task-usage-info p {
+    margin: 0.5rem 0;
+    color: var(--text-primary);
+}
+
+.ai-task-controls {
+    margin: 2rem 0;
+}
+
+.ai-task-btn {
+    padding: 0.75rem 2rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.ai-task-btn.start {
+    background: var(--button-primary-bg);
+    color: white;
+}
+
+.ai-task-btn.start:hover:not(:disabled) {
+    background: var(--button-primary-hover);
+}
+
+.ai-task-btn.start:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.ai-task-btn.end {
+    background: #dc3545;
+    color: white;
+}
+
+.ai-task-btn.end:hover {
+    background: #c82333;
+}
+
+.ai-task-warning {
+    margin-top: 1rem;
+    color: #dc3545;
+    font-weight: 500;
+}
+
+.ai-task-active {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: rgba(40, 167, 69, 0.1);
+    border: 1px solid rgba(40, 167, 69, 0.3);
+    border-radius: 6px;
+}
+
+.ai-task-active p {
+    margin: 0.25rem 0;
+    color: var(--text-primary);
+}
+
+.ai-task-permissions {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+}
+
+.ai-task-permissions h4 {
+    margin: 0 0 1rem 0;
+    color: var(--text-primary);
+}
+
+.ai-task-permissions ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.ai-task-permissions li {
+    padding: 0.5rem 0;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
