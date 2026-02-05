@@ -5,6 +5,7 @@ const simpleGit = require('simple-git');
 const path = require('path');
 const fs = require('fs-extra');
 const os = require('os');
+const crypto = require('crypto');
 const createRateLimiter = require('../utils/rate-limit');
 
 const router = express.Router();
@@ -336,15 +337,22 @@ router.get('/:owner/:repo/pulls/:number/mergeable', authenticateToken, async (re
                         }
 
                         // Create a temporary worktree to test merge (works with bare repos)
-                        worktreePath = path.join(os.tmpdir(), `worktree-${Date.now()}-${Math.random().toString(36).substring(7)}`);
+                        const randomSuffix = crypto.randomBytes(8).toString('hex');
+                        worktreePath = path.join(os.tmpdir(), `worktree-${Date.now()}-${randomSuffix}`);
                         
                         try {
                             // Add worktree with base branch
                             await git.raw(['worktree', 'add', worktreePath, pr.base_branch]);
                         } catch (worktreeError) {
                             console.error('Failed to create worktree:', worktreeError);
+                            // Provide more specific error based on the failure
+                            let errorMsg = 'Failed to create test worktree';
+                            if (worktreeError.message.includes('invalid reference') || 
+                                worktreeError.message.includes('not a valid')) {
+                                errorMsg = `Base branch '${pr.base_branch}' is not a valid reference`;
+                            }
                             return res.status(500).json({ 
-                                error: 'Failed to create test worktree',
+                                error: errorMsg,
                                 mergeable: null,
                                 has_conflicts: false
                             });
