@@ -8,6 +8,7 @@ function AIAssistant({ user }) {
     const [response, setResponse] = useState('')
     const [loading, setLoading] = useState(false)
     const [usage, setUsage] = useState(0)
+    const [usageLimit, setUsageLimit] = useState(100)
     const [chats, setChats] = useState([])
     const [activeChatId, setActiveChatId] = useState(null)
     const [messages, setMessages] = useState([])
@@ -39,6 +40,7 @@ function AIAssistant({ user }) {
             })
             const data = await res.json()
             setUsage(data.ai_usage || 0)
+            setUsageLimit(data.ai_usage_limit || 100)
         } catch (err) {
             console.error('Failed to load usage:', err)
         }
@@ -213,8 +215,8 @@ function AIAssistant({ user }) {
         // Calculate usage (1 character = 0.002%)
         const promptUsage = prompt.length * 0.002
 
-        if (usage + promptUsage > 100) {
-            alert('Usage limit exceeded! You have reached 100% of your AI usage quota.')
+        if (usage + promptUsage > usageLimit) {
+            alert(`Usage limit exceeded! You have reached ${usageLimit}% of your AI usage quota.`)
             return
         }
 
@@ -312,12 +314,12 @@ function AIAssistant({ user }) {
                         <div className="ai-usage-bar">
                             <div className="ai-usage-label">
                                 <span>Chat Usage</span>
-                                <span>{usage.toFixed(2)}% / 100%</span>
+                                <span>{usage.toFixed(2)}% / {usageLimit}%</span>
                             </div>
                             <div className="ai-usage-progress">
                                 <div
                                     className="ai-usage-fill"
-                                    style={{ width: `${Math.min(usage, 100)}%` }}
+                                    style={{ width: `${Math.min((usage / usageLimit) * 100, 100)}%` }}
                                 />
                             </div>
                             {taskUsage && (

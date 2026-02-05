@@ -70,22 +70,39 @@ router.post('/users/:username/promote-moderator', authenticateToken, isAdmin, (r
 router.post('/users/:username/demote', authenticateToken, isAdmin, (req, res) => {
     const { username } = req.params;
 
-    db.run(
-        'UPDATE users SET role = ?, is_admin = 0 WHERE username = ?',
-        ['user', username],
-        function (err) {
+    // Check if user is the first admin (user with id = 1)
+    db.get(
+        'SELECT id FROM users WHERE username = ? AND id = 1',
+        [username],
+        (err, firstAdmin) => {
             if (err) {
                 return res.status(500).json({ error: 'Database error' });
             }
 
-            if (this.changes === 0) {
-                return res.status(404).json({ error: 'User not found' });
+            if (firstAdmin) {
+                return res.status(403).json({ 
+                    error: 'Cannot demote the first admin. This account is protected to prevent lockout.' 
+                });
             }
 
-            res.json({
-                message: `User ${username} demoted to regular user`,
-                role: 'user'
-            });
+            db.run(
+                'UPDATE users SET role = ?, is_admin = 0 WHERE username = ?',
+                ['user', username],
+                function (err) {
+                    if (err) {
+                        return res.status(500).json({ error: 'Database error' });
+                    }
+
+                    if (this.changes === 0) {
+                        return res.status(404).json({ error: 'User not found' });
+                    }
+
+                    res.json({
+                        message: `User ${username} demoted to regular user`,
+                        role: 'user'
+                    });
+                }
+            );
         }
     );
 });
@@ -102,22 +119,43 @@ router.put('/users/:username/role', authenticateToken, isAdmin, (req, res) => {
 
     const isAdminFlag = role === 'admin' ? 1 : 0;
 
-    db.run(
-        'UPDATE users SET role = ?, is_admin = ? WHERE username = ?',
-        [role, isAdminFlag, username],
-        function (err) {
+    // Check if trying to demote the first admin
+    db.get(
+        'SELECT id, is_admin FROM users WHERE username = ?',
+        [username],
+        (err, user) => {
             if (err) {
                 return res.status(500).json({ error: 'Database error' });
             }
 
-            if (this.changes === 0) {
+            if (!user) {
                 return res.status(404).json({ error: 'User not found' });
             }
 
-            res.json({
-                message: `User ${username} role updated to ${role}`,
-                role
-            });
+            // Prevent demoting the first admin
+            if (user.id === 1 && user.is_admin === 1 && role !== 'admin') {
+                return res.status(403).json({ 
+                    error: 'Cannot demote the first admin. This account is protected to prevent lockout.' 
+                });
+            }
+
+            db.run(
+                'UPDATE users SET role = ?, is_admin = ? WHERE username = ?',
+                [role, isAdminFlag, username],
+                function (err) {
+                    if (err) {
+                        return res.status(500).json({ error: 'Database error' });
+                    }
+
+                    res.json({
+                        message: `User ${username} role updated to ${role}`,
+                        role
+                    });
+                }
+            );
+        }
+    );
+});
         }
     );
 });
@@ -273,6 +311,98 @@ router.get('/stats', authenticateToken, isAdmin, (req, res) => {
             });
         });
     });
+});
+
+// Set user AI usage limit (admin only)
+router.put('/users/:username/ai-limit', authenticateToken, isAdmin, (req, res) => {
+    const { username } = req.params;
+    const { limit } = req.body;
+
+    if (typeof limit !== 'number' || limit < 0) {
+        return res.status(400).json({ error: 'Limit must be a non-negative number' });
+    }
+
+    // First get the user ID
+    db.get(
+        'SELECT id FROM users WHERE username = ?',
+        [username],
+        (err, user) => {
+            if (err) {
+                return res.status(500).json({ error: 'Database error' });
+            }
+
+            if (!user) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+
+            const currentMonth = new Date().toISOString().substring(0, 7);
+
+            // Update or insert user settings with new limit
+            db.run(
+                `UPDATE user_settings SET ai_usage_limit = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?`,
+                [limit, user.id],
+                function (err) {
+                    if (err) {
+                        return res.status(500).json({ error: 'Database error' });
+                    }
+
+                    if (this.changes === 0) {
+                        // Insert if doesn't exist
+                        db.run(
+                            `INSERT INTO user_settings (user_id, ai_usage_limit, ai_usage_month) VALUES (?, ?, ?)`,
+                            [user.id, limit, currentMonth],
+                            function (err) {
+                                if (err) {
+                                    return res.status(500).json({ error: 'Failed to create settings' });
+                                }
+                                res.json({ 
+                                    message: `AI usage limit for ${username} set to ${limit}%`,
+                                    limit 
+                                });
+                            }
+                        );
+                    } else {
+                        res.json({ 
+                            message: `AI usage limit for ${username} updated to ${limit}%`,
+                            limit 
+                        });
+                    }
+                }
+            );
+        }
+    );
+});
+
+// Get user AI usage and limit (admin only)
+router.get('/users/:username/ai-usage', authenticateToken, isAdmin, (req, res) => {
+    const { username } = req.params;
+
+    db.get(
+        `SELECT u.id, u.username, s.ai_usage, s.ai_usage_limit, s.ai_usage_month 
+         FROM users u
+         LEFT JOIN user_settings s ON u.id = s.user_id
+         WHERE u.username = ?`,
+        [username],
+        (err, result) => {
+            if (err) {
+                return res.status(500).json({ error: 'Database error' });
+            }
+
+            if (!result) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+
+            const currentMonth = new Date().toISOString().substring(0, 7);
+            
+            res.json({
+                username: result.username,
+                ai_usage: result.ai_usage || 0,
+                ai_usage_limit: result.ai_usage_limit || 100,
+                ai_usage_month: result.ai_usage_month || currentMonth,
+                needs_reset: result.ai_usage_month !== currentMonth
+            });
+        }
+    );
 });
 
 // Update configuration (admin only)

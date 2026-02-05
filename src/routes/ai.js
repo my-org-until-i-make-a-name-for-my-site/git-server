@@ -144,18 +144,54 @@ router.post('/chats/:chatId/messages', authenticateToken, async (req, res) => {
     }
 
     try {
+        const currentMonth = new Date().toISOString().substring(0, 7); // YYYY-MM
         const usageDelta = message.length * 0.002;
+        
+        // Get or create user settings with monthly reset logic
         const usageRow = await new Promise((resolve, reject) => {
             db.get(
-                'SELECT ai_usage FROM user_settings WHERE user_id = ?',
+                'SELECT ai_usage, ai_usage_limit, ai_usage_month FROM user_settings WHERE user_id = ?',
                 [userId],
                 (err, row) => (err ? reject(err) : resolve(row))
             );
         });
 
-        const currentUsage = usageRow?.ai_usage || 0;
-        if (currentUsage + usageDelta > 100) {
-            return res.status(429).json({ error: 'Usage limit exceeded' });
+        let currentUsage = 0;
+        let usageLimit = 100;
+
+        if (usageRow) {
+            // Check if month has changed - reset if needed
+            if (usageRow.ai_usage_month !== currentMonth) {
+                // Reset usage for new month
+                await new Promise((resolve, reject) => {
+                    db.run(
+                        'UPDATE user_settings SET ai_usage = 0, ai_usage_month = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?',
+                        [currentMonth, userId],
+                        (err) => (err ? reject(err) : resolve())
+                    );
+                });
+                currentUsage = 0;
+            } else {
+                currentUsage = usageRow.ai_usage || 0;
+            }
+            usageLimit = usageRow.ai_usage_limit || 100;
+        } else {
+            // Create user settings if doesn't exist
+            await new Promise((resolve, reject) => {
+                db.run(
+                    'INSERT INTO user_settings (user_id, ai_usage, ai_usage_limit, ai_usage_month) VALUES (?, 0, 100, ?)',
+                    [userId, currentMonth],
+                    (err) => (err ? reject(err) : resolve())
+                );
+            });
+        }
+
+        if (currentUsage + usageDelta > usageLimit) {
+            return res.status(429).json({ 
+                error: 'Usage limit exceeded',
+                current: currentUsage,
+                limit: usageLimit
+            });
         }
 
         const chat = await new Promise((resolve, reject) => {
@@ -242,14 +278,14 @@ router.post('/chats/:chatId/messages', authenticateToken, async (req, res) => {
 
         await new Promise((resolve, reject) => {
             db.run(
-                'UPDATE user_settings SET ai_usage = ai_usage + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?',
-                [usageDelta, userId],
+                'UPDATE user_settings SET ai_usage = ai_usage + ?, ai_usage_month = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?',
+                [usageDelta, currentMonth, userId],
                 function (err) {
                     if (err) return reject(err);
                     if (this.changes === 0) {
                         db.run(
-                            'INSERT INTO user_settings (user_id, ai_usage) VALUES (?, ?)',
-                            [userId, usageDelta],
+                            'INSERT INTO user_settings (user_id, ai_usage, ai_usage_limit, ai_usage_month) VALUES (?, ?, 100, ?)',
+                            [userId, usageDelta, currentMonth],
                             (err) => (err ? reject(err) : resolve())
                         );
                     } else {

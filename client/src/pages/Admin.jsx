@@ -112,13 +112,56 @@ function Admin({ user, logout }) {
     const demoteUser = async (username) => {
         const token = localStorage.getItem('token')
         try {
-            await fetch(`/api/admin/users/${username}/demote`, {
+            const response = await fetch(`/api/admin/users/${username}/demote`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             })
+            
+            if (!response.ok) {
+                const data = await response.json()
+                alert(data.error || 'Failed to demote user')
+                return
+            }
+            
             loadData()
         } catch (err) {
             console.error('Failed to demote user:', err)
+            alert('Failed to demote user')
+        }
+    }
+
+    const setUserAILimit = async (username) => {
+        const limit = prompt(`Enter new AI usage limit for ${username} (current: 100%, 0 = unlimited):`)
+        if (limit === null) return
+        
+        const numLimit = parseFloat(limit)
+        if (isNaN(numLimit) || numLimit < 0) {
+            alert('Please enter a valid non-negative number')
+            return
+        }
+        
+        const token = localStorage.getItem('token')
+        try {
+            const response = await fetch(`/api/admin/users/${username}/ai-limit`, {
+                method: 'PUT',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ limit: numLimit })
+            })
+            
+            if (response.ok) {
+                const data = await response.json()
+                alert(data.message)
+                loadData()
+            } else {
+                const data = await response.json()
+                alert(data.error || 'Failed to set AI limit')
+            }
+        } catch (err) {
+            console.error('Failed to set AI limit:', err)
+            alert('Failed to set AI limit')
         }
     }
 
@@ -261,6 +304,13 @@ function Admin({ user, logout }) {
                                                                 Demote
                                                             </button>
                                                         )}
+                                                        <button
+                                                            className="action-btn info"
+                                                            onClick={() => setUserAILimit(u.username)}
+                                                            title="Set AI usage limit"
+                                                        >
+                                                            AI Limit
+                                                        </button>
                                                     </div>
                                                 </td>
                                             </tr>

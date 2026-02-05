@@ -204,6 +204,16 @@ tbody tr:last-child td {
   background: var(--button-primary-hover);
 }
 
+.action-btn.info {
+  background: #17a2b8;
+  color: white;
+  border-color: #17a2b8;
+}
+
+.action-btn.info:hover {
+  background: #138496;
+}
+
 .repo-link {
   text-decoration: none;
   color: inherit;

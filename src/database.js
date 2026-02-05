@@ -309,6 +309,8 @@ function initDatabase() {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL UNIQUE,
             ai_usage REAL DEFAULT 0,
+            ai_usage_limit REAL DEFAULT 100,
+            ai_usage_month TEXT,
             email_notifications INTEGER DEFAULT 1,
             theme_preference TEXT DEFAULT 'dark',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -452,6 +454,30 @@ function initDatabase() {
             FOREIGN KEY (run_id) REFERENCES workflow_runs(id)
           )
         `);
+
+        // Add new columns to user_settings if they don't exist (migration)
+        db.all(`PRAGMA table_info(user_settings)`, (err, columns) => {
+            if (err) {
+                console.error('Error checking user_settings columns:', err);
+                return;
+            }
+            
+            const columnNames = columns.map(col => col.name);
+            
+            if (!columnNames.includes('ai_usage_limit')) {
+                db.run(`ALTER TABLE user_settings ADD COLUMN ai_usage_limit REAL DEFAULT 100`, (err) => {
+                    if (err) console.error('Error adding ai_usage_limit column:', err);
+                    else console.log('Added ai_usage_limit column to user_settings');
+                });
+            }
+            
+            if (!columnNames.includes('ai_usage_month')) {
+                db.run(`ALTER TABLE user_settings ADD COLUMN ai_usage_month TEXT`, (err) => {
+                    if (err) console.error('Error adding ai_usage_month column:', err);
+                    else console.log('Added ai_usage_month column to user_settings');
+                });
+            }
+        });
 
         console.log('Database schema initialized');
     });
