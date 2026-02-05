@@ -396,6 +396,35 @@ function initDatabase() {
           )
         `);
 
+        // AI task sessions
+        db.run(`
+          CREATE TABLE IF NOT EXISTS ai_task_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            chat_id INTEGER,
+            status TEXT DEFAULT 'active',
+            duration_seconds INTEGER DEFAULT 0,
+            started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            ended_at DATETIME,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (chat_id) REFERENCES ai_chats(id)
+          )
+        `);
+
+        // AI task session usage tracking
+        db.run(`
+          CREATE TABLE IF NOT EXISTS ai_task_usage (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            month TEXT NOT NULL,
+            total_seconds INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            UNIQUE(user_id, month)
+          )
+        `);
+
         // Workflow runs
         db.run(`
           CREATE TABLE IF NOT EXISTS workflow_runs (

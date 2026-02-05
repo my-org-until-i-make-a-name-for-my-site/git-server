@@ -53,6 +53,31 @@ router.post('/chats', authenticateToken, (req, res) => {
     );
 });
 
+// Update chat title
+router.patch('/chats/:chatId', authenticateToken, (req, res) => {
+    const userId = req.user.id;
+    const { chatId } = req.params;
+    const { title } = req.body;
+
+    if (!title || !title.trim()) {
+        return res.status(400).json({ error: 'Title is required' });
+    }
+
+    db.run(
+        'UPDATE ai_chats SET title = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?',
+        [title.trim(), chatId, userId],
+        function (err) {
+            if (err) {
+                return res.status(500).json({ error: 'Failed to update chat' });
+            }
+            if (this.changes === 0) {
+                return res.status(404).json({ error: 'Chat not found' });
+            }
+            res.json({ success: true, title: title.trim() });
+        }
+    );
+});
+
 // Get chat with messages and attachments
 router.get('/chats/:chatId', authenticateToken, (req, res) => {
     const userId = req.user.id;
@@ -251,6 +276,135 @@ router.post('/chats/:chatId/messages', authenticateToken, async (req, res) => {
         console.error('AI chat error:', err);
         res.status(500).json({ error: 'Failed to process AI message' });
     }
+});
+
+// Start AI task session
+router.post('/task-sessions', authenticateToken, async (req, res) => {
+    const userId = req.user.id;
+    const { chatId } = req.body;
+
+    try {
+        // Get current month usage
+        const currentMonth = new Date().toISOString().substring(0, 7); // YYYY-MM
+        const MAX_MONTHLY_HOURS = 30;
+        const MAX_MONTHLY_SECONDS = MAX_MONTHLY_HOURS * 3600;
+
+        const usageRow = await new Promise((resolve, reject) => {
+            db.get(
+                'SELECT total_seconds FROM ai_task_usage WHERE user_id = ? AND month = ?',
+                [userId, currentMonth],
+                (err, row) => (err ? reject(err) : resolve(row))
+            );
+        });
+
+        const currentUsage = usageRow?.total_seconds || 0;
+        if (currentUsage >= MAX_MONTHLY_SECONDS) {
+            return res.status(429).json({ 
+                error: 'Monthly task session limit reached',
+                limit: MAX_MONTHLY_HOURS,
+                used: Math.floor(currentUsage / 3600)
+            });
+        }
+
+        // Create task session
+        const sessionId = await new Promise((resolve, reject) => {
+            db.run(
+                'INSERT INTO ai_task_sessions (user_id, chat_id, status) VALUES (?, ?, ?)',
+                [userId, chatId || null, 'active'],
+                function (err) {
+                    if (err) return reject(err);
+                    resolve(this.lastID);
+                }
+            );
+        });
+
+        res.json({ 
+            sessionId,
+            remainingHours: Math.floor((MAX_MONTHLY_SECONDS - currentUsage) / 3600),
+            maxHours: MAX_MONTHLY_HOURS
+        });
+    } catch (err) {
+        console.error('Failed to start task session:', err);
+        res.status(500).json({ error: 'Failed to start task session' });
+    }
+});
+
+// End AI task session
+router.post('/task-sessions/:sessionId/end', authenticateToken, async (req, res) => {
+    const userId = req.user.id;
+    const { sessionId } = req.params;
+
+    try {
+        const session = await new Promise((resolve, reject) => {
+            db.get(
+                'SELECT * FROM ai_task_sessions WHERE id = ? AND user_id = ? AND status = ?',
+                [sessionId, userId, 'active'],
+                (err, row) => (err ? reject(err) : resolve(row))
+            );
+        });
+
+        if (!session) {
+            return res.status(404).json({ error: 'Active session not found' });
+        }
+
+        const duration = Math.floor((Date.now() - new Date(session.started_at).getTime()) / 1000);
+        const currentMonth = new Date().toISOString().substring(0, 7);
+
+        // Update session
+        await new Promise((resolve, reject) => {
+            db.run(
+                'UPDATE ai_task_sessions SET status = ?, duration_seconds = ?, ended_at = CURRENT_TIMESTAMP WHERE id = ?',
+                ['ended', duration, sessionId],
+                (err) => (err ? reject(err) : resolve())
+            );
+        });
+
+        // Update monthly usage
+        await new Promise((resolve, reject) => {
+            db.run(
+                `INSERT INTO ai_task_usage (user_id, month, total_seconds) VALUES (?, ?, ?)
+                 ON CONFLICT(user_id, month) DO UPDATE SET 
+                 total_seconds = total_seconds + ?, updated_at = CURRENT_TIMESTAMP`,
+                [userId, currentMonth, duration, duration],
+                (err) => (err ? reject(err) : resolve())
+            );
+        });
+
+        res.json({ 
+            success: true,
+            duration,
+            durationMinutes: Math.floor(duration / 60)
+        });
+    } catch (err) {
+        console.error('Failed to end task session:', err);
+        res.status(500).json({ error: 'Failed to end task session' });
+    }
+});
+
+// Get task session usage
+router.get('/task-sessions/usage', authenticateToken, (req, res) => {
+    const userId = req.user.id;
+    const currentMonth = new Date().toISOString().substring(0, 7);
+    const MAX_MONTHLY_HOURS = 30;
+    const MAX_MONTHLY_SECONDS = MAX_MONTHLY_HOURS * 3600;
+
+    db.get(
+        'SELECT total_seconds FROM ai_task_usage WHERE user_id = ? AND month = ?',
+        [userId, currentMonth],
+        (err, row) => {
+            if (err) {
+                return res.status(500).json({ error: 'Failed to get usage' });
+            }
+            const usedSeconds = row?.total_seconds || 0;
+            res.json({
+                maxHours: MAX_MONTHLY_HOURS,
+                usedHours: Math.floor(usedSeconds / 3600),
+                usedSeconds,
+                remainingHours: Math.floor((MAX_MONTHLY_SECONDS - usedSeconds) / 3600),
+                remainingSeconds: MAX_MONTHLY_SECONDS - usedSeconds
+            });
+        }
+    );
 });
 
 module.exports = router;

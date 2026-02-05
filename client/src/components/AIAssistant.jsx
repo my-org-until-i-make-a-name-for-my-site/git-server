@@ -68,7 +68,7 @@ function AIAssistant({ user }) {
         }
     }
 
-    const createChat = async () => {
+    const createChat = async (autoTitle = null) => {
         try {
             const token = localStorage.getItem('token')
             const res = await fetch('/api/ai/chats', {
@@ -77,7 +77,7 @@ function AIAssistant({ user }) {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ title: 'New Chat' })
+                body: JSON.stringify({ title: autoTitle || 'New Chat' })
             })
             const data = await res.json()
             if (data.chat) {
@@ -90,6 +90,40 @@ function AIAssistant({ user }) {
             console.error('Failed to create chat:', err)
         }
         return null
+    }
+
+    const generateChatTitle = async (firstMessage) => {
+        try {
+            // Generate a short title from the first message using AI
+            const titlePrompt = `Generate a very short 3-5 word title for a chat that starts with: "${firstMessage.substring(0, 100)}"`
+            const aiUrl = `https://text.pollinations.ai/${encodeURIComponent(titlePrompt)}`
+            const aiRes = await fetch(aiUrl)
+            const title = await aiRes.text()
+            // Clean up the title - remove quotes and limit length
+            return title.replace(/['"]/g, '').substring(0, 50).trim()
+        } catch (err) {
+            console.error('Failed to generate title:', err)
+            return 'New Chat'
+        }
+    }
+
+    const updateChatTitle = async (chatId, title) => {
+        try {
+            const token = localStorage.getItem('token')
+            await fetch(`/api/ai/chats/${chatId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ title })
+            })
+            setChats(prev => prev.map(chat => 
+                chat.id === chatId ? { ...chat, title } : chat
+            ))
+        } catch (err) {
+            console.error('Failed to update chat title:', err)
+        }
     }
 
     const fileToBase64 = (file) => new Promise((resolve, reject) => {
@@ -135,6 +169,8 @@ function AIAssistant({ user }) {
                 return
             }
 
+            const isFirstMessage = messages.length === 0
+
             const res = await fetch(`/api/ai/chats/${chatId}/messages`, {
                 method: 'POST',
                 headers: {
@@ -161,8 +197,17 @@ function AIAssistant({ user }) {
                 ]))
                 setResponse(data.message?.content || '')
                 setUsage(prev => prev + promptUsage)
+                
+                const currentPrompt = prompt
                 setPrompt('')
                 setAttachments([])
+                
+                // Auto-generate chat title from first message
+                if (isFirstMessage) {
+                    const title = await generateChatTitle(currentPrompt)
+                    await updateChatTitle(chatId, title)
+                }
+                
                 loadChats()
                 loadUsage()
             } else {
@@ -185,33 +230,12 @@ function AIAssistant({ user }) {
             {isOpen && (
                 <div className="ai-assistant-modal">
                     <div className="ai-assistant-content">
-                        <div className="ai-chat-list">
-                            <div className="ai-chat-list-header">
-                                <h4>Chats</h4>
-                                <button className="ai-new-chat-btn" onClick={createChat}>New</button>
-                            </div>
-                            <div className="ai-chat-items">
-                                {chats.length === 0 ? (
-                                    <div className="ai-chat-empty">No chats yet</div>
-                                ) : (
-                                    chats.map(chat => (
-                                        <button
-                                            key={chat.id}
-                                            className={`ai-chat-item ${activeChatId === chat.id ? 'active' : ''}`}
-                                            onClick={() => setActiveChatId(chat.id)}
-                                        >
-                                            {chat.title}
-                                        </button>
-                                    ))
-                                )}
-                            </div>
-                        </div>
                         <div className="ai-assistant-header">
                             <div className="ai-assistant-title">
                                 <SparkleIcon />
                                 <h3>AI Code Assistant</h3>
                             </div>
-                            <button className="ai-assistant-close" onClick={() => setIsOpen(false)}>
+                            <button className="ai-assistant-close" onClick={() => setIsOpen(false)} title="Close">
                                 <XIcon />
                             </button>
                         </div>
@@ -229,67 +253,85 @@ function AIAssistant({ user }) {
                             </div>
                         </div>
 
-                        <div className="ai-chat-messages">
-                            {messages.length === 0 ? (
-                                <div className="ai-chat-empty">Start a conversation to see messages here.</div>
-                            ) : (
-                                messages.map(msg => (
-                                    <div key={msg.id} className={`ai-chat-message ${msg.role}`}>
-                                        <div className="ai-chat-role">{msg.role === 'assistant' ? 'Assistant' : 'You'}</div>
-                                        <div className="ai-chat-content">{msg.content}</div>
-                                        {msg.attachments && msg.attachments.length > 0 && (
-                                            <div className="ai-chat-attachments">
-                                                {msg.attachments.map(att => (
-                                                    <div key={att.id || att.name} className="ai-chat-attachment">
-                                                        {att.name}
+                        <div className="ai-assistant-body">
+                            <div className="ai-chat-list">
+                                <div className="ai-chat-list-header">
+                                    <h4>Chats</h4>
+                                    <button className="ai-new-chat-btn" onClick={() => createChat()}>New</button>
+                                </div>
+                                <div className="ai-chat-items">
+                                    {chats.length === 0 ? (
+                                        <div className="ai-chat-empty">No chats yet</div>
+                                    ) : (
+                                        chats.map(chat => (
+                                            <button
+                                                key={chat.id}
+                                                className={`ai-chat-item ${activeChatId === chat.id ? 'active' : ''}`}
+                                                onClick={() => setActiveChatId(chat.id)}
+                                                title={chat.title}
+                                            >
+                                                {chat.title}
+                                            </button>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="ai-main-content">
+                                <div className="ai-chat-messages">
+                                    {messages.length === 0 ? (
+                                        <div className="ai-chat-empty">Start a conversation to see messages here.</div>
+                                    ) : (
+                                        messages.map(msg => (
+                                            <div key={msg.id} className={`ai-chat-message ${msg.role}`}>
+                                                <div className="ai-chat-role">{msg.role === 'assistant' ? 'Assistant' : 'You'}</div>
+                                                <div className="ai-chat-content">{msg.content}</div>
+                                                {msg.attachments && msg.attachments.length > 0 && (
+                                                    <div className="ai-chat-attachments">
+                                                        {msg.attachments.map(att => (
+                                                            <div key={att.id || att.name} className="ai-chat-attachment">
+                                                                {att.name}
+                                                            </div>
+                                                        ))}
                                                     </div>
+                                                )}
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+
+                                <form onSubmit={handleSubmit} className="ai-assistant-form">
+                                    <textarea
+                                        className="ai-prompt-input"
+                                        placeholder="Ask AI to help with code generation, explanations, debugging, or improvements..."
+                                        value={prompt}
+                                        onChange={(e) => setPrompt(e.target.value)}
+                                        rows="4"
+                                    />
+                                    <div className="ai-attachments">
+                                        <input
+                                            type="file"
+                                            multiple
+                                            onChange={(e) => setAttachments(Array.from(e.target.files || []))}
+                                        />
+                                        {attachments.length > 0 && (
+                                            <div className="ai-attachment-list">
+                                                {attachments.map(file => (
+                                                    <span key={file.name} className="ai-attachment-chip">{file.name}</span>
                                                 ))}
                                             </div>
                                         )}
                                     </div>
-                                ))
-                            )}
+                                    <button
+                                        type="submit"
+                                        className="ai-submit-btn"
+                                        disabled={loading || !prompt.trim()}
+                                    >
+                                        {loading ? 'Generating...' : 'Generate'}
+                                    </button>
+                                </form>
+                            </div>
                         </div>
-
-                        <form onSubmit={handleSubmit} className="ai-assistant-form">
-                            <textarea
-                                className="ai-prompt-input"
-                                placeholder="Ask AI to help with code generation, explanations, debugging, or improvements..."
-                                value={prompt}
-                                onChange={(e) => setPrompt(e.target.value)}
-                                rows="4"
-                            />
-                            <div className="ai-attachments">
-                                <input
-                                    type="file"
-                                    multiple
-                                    onChange={(e) => setAttachments(Array.from(e.target.files || []))}
-                                />
-                                {attachments.length > 0 && (
-                                    <div className="ai-attachment-list">
-                                        {attachments.map(file => (
-                                            <span key={file.name} className="ai-attachment-chip">{file.name}</span>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                            <button
-                                type="submit"
-                                className="ai-submit-btn"
-                                disabled={loading || !prompt.trim()}
-                            >
-                                {loading ? 'Generating...' : 'Generate'}
-                            </button>
-                        </form>
-
-                        {response && (
-                            <div className="ai-response">
-                                <h4>Response:</h4>
-                                <div className="ai-response-content">
-                                    <p>{response}</p>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
             )}
