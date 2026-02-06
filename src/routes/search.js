@@ -17,7 +17,7 @@ const searchLimiter = createRateLimiter({
 });
 
 // Search endpoint
-router.get('/', authenticateToken, searchLimiter, (req, res) => {
+router.get('/', searchLimiter, authenticateToken, (req, res) => {
     const { q, type = 'all' } = req.query;
 
     if (!q || q.length < 2) {
