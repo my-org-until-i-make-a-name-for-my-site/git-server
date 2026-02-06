@@ -9,7 +9,7 @@ const crypto = require('crypto');
 const createRateLimiter = require('../utils/rate-limit');
 
 const router = express.Router();
-const REPOS_BASE_PATH = process.env.REPOS_BASE_PATH || './repos';
+const REPOS_BASE_PATH = path.resolve(process.env.REPOS_BASE_PATH || 'Z:/mnt/repos');
 
 let workflowExecutor = null;
 

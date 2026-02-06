@@ -5,7 +5,7 @@ const fs = require('fs-extra');
 const db = require('../database');
 
 const router = express.Router();
-const REPOS_BASE_PATH = process.env.REPOS_BASE_PATH || './repos';
+const REPOS_BASE_PATH = path.resolve(process.env.REPOS_BASE_PATH || 'Z:/mnt/repos');
 const DIST_PATH = path.join(__dirname, '../../dist');
 
 fs.ensureDirSync(REPOS_BASE_PATH);

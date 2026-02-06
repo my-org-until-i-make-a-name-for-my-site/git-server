@@ -7,7 +7,7 @@ const path = require('path');
 const fs = require('fs-extra');
 
 const router = express.Router();
-const REPOS_BASE_PATH = process.env.REPOS_BASE_PATH || './repos';
+const REPOS_BASE_PATH = path.resolve(process.env.REPOS_BASE_PATH || 'Z:/mnt/repos');
 
 // Get commits for a repository
 router.get('/:owner/:repo/commits', async (req, res) => {

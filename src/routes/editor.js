@@ -9,7 +9,7 @@ const router = express.Router();
 
 // Store running code-server instances
 const editorInstances = new Map();
-const REPOS_BASE_PATH = process.env.REPOS_BASE_PATH || './repos';
+const REPOS_BASE_PATH = path.resolve(process.env.REPOS_BASE_PATH || 'Z:/mnt/repos');
 const EDITOR_BASE_PORT = 8080; // Starting port for editors
 
 // Start VSCode editor for a repository
