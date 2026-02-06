@@ -19,7 +19,8 @@ router.get('/', authenticateToken, (req, res) => {
 
     const searchTerm = `%${q}%`;
 
-    const DB_QUERIES_WHEN_INDEXER_USED = 2;
+    const EXPECTED_DB_QUERIES_FOR_ORGS_AND_USERS = 2;
+    const EXPECTED_DB_QUERIES_FOR_ALL_TYPES = 3;
 
     // Prefer indexer for repo search
     if (searchIndexer && searchIndexer.ready && (type === 'all' || type === 'repos')) {
@@ -38,7 +39,7 @@ router.get('/', authenticateToken, (req, res) => {
 
             const done = () => {
                 completed++;
-                if (completed >= DB_QUERIES_WHEN_INDEXER_USED) {
+                if (completed >= EXPECTED_DB_QUERIES_FOR_ORGS_AND_USERS) {
                     if (hasError) {
                         return res.status(500).json({ error: 'Search failed', results });
                     }
@@ -83,7 +84,7 @@ router.get('/', authenticateToken, (req, res) => {
     const results = { repos: [], orgs: [], users: [] };
     let completed = 0;
     let hasError = false;
-    const needed = type === 'all' ? 3 : 1;
+    const needed = type === 'all' ? EXPECTED_DB_QUERIES_FOR_ALL_TYPES : 1;
     const finish = () => {
         if (completed >= needed) {
             if (hasError) {

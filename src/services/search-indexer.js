@@ -27,6 +27,10 @@ class SearchIndexer {
     }
   }
 
+  /**
+   * Load all repositories from the database, index a subset of their file contents,
+   * and refresh the in-memory search index.
+   */
   async buildIndex() {
     const repos = await this._loadRepos();
     const newIndex = [];
