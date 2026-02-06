@@ -415,7 +415,7 @@ deploy:
 
 ## 🗺️ Feature Backlog & Self-Training AI Plan
 
-See [docs/CODARA_FEATURE_ROADMAP.md](docs/CODARA_FEATURE_ROADMAP.md) for the full future-facing feature backlog, including the self-training AI system (2 GB VRAM/RAM caps, nightly low-priority training, models stored at `Z:/models/codara/**`) and the current TODO list. These items are not yet implemented and are tracked for phased delivery.
+See [docs/CODARA_FEATURE_ROADMAP.md](docs/CODARA_FEATURE_ROADMAP.md) for the phased roadmap covering the end-to-end Codara platform, including repository experience, collaboration, search, analytics, CI/CD, infrastructure, advanced security, and the self-training AI system (2 GB VRAM/RAM cap; models stored under `Z:/models/codara/**`).
 
 ## 🤝 Contributing
 
