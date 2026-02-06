@@ -413,6 +413,10 @@ deploy:
 - **Cluster Authentication**: Secret-based auth
 - **Permission System**: Role-based access control
 
+## 🗺️ Feature Backlog & Self-Training AI Plan
+
+See [docs/CODARA_FEATURE_ROADMAP.md](docs/CODARA_FEATURE_ROADMAP.md) for the full future-facing feature backlog, including the self-training AI system (2 GB VRAM/RAM caps, nightly low-priority training, models stored at `Z:/models/codara/**`) and the current TODO list. These items are not yet implemented and are tracked for phased delivery.
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please:
