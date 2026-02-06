@@ -86,7 +86,7 @@ Choose one to guide phased delivery:
 ## ✅ TODO (Do Not Implement Yet)
 
  - [x] Confirm strategic direction (A–E) to prioritize sequencing — selected **A) AI-first platform** to emphasize AI-driven capabilities.
-- [ ] Define minimal viable scope for self-training AI (2 GB cap, nightly, checkpoints).
+ - [x] Define minimal viable scope for self-training AI (2 GB cap, nightly, checkpoints) — scoped to nightly low-priority runs capped at ~2 GB VRAM/CPU RAM with checkpoints stored under `Z:/models/codara/checkpoints/`.
 - [ ] Draft data governance and safety constraints for background training.
 - [ ] Design storage layout and retention for `Z:/models/codara/**` and checkpoints.
 - [ ] Prototype semantic search stack covering code/symbol/function/class.
