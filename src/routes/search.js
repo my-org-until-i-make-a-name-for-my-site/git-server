@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const db = require('../database');
+const createRateLimiter = require('../utils/rate-limit');
 
 let searchIndexer = null;
 
@@ -9,8 +10,14 @@ function setSearchIndexer(indexer) {
     searchIndexer = indexer;
 }
 
+const searchLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 60,
+    message: 'Too many search requests, please try again soon.'
+});
+
 // Search endpoint
-router.get('/', authenticateToken, (req, res) => {
+router.get('/', authenticateToken, searchLimiter, (req, res) => {
     const { q, type = 'all' } = req.query;
 
     if (!q || q.length < 2) {
