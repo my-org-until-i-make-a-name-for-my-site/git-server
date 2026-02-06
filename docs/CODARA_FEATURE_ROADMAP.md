@@ -97,4 +97,4 @@ Choose one to guide phased delivery:
  - [x] Define plugin/extension API surface and marketplace publish flow.
  - [x] Security roadmap: secrets, dependency scanning, token misuse, audit logs.
 
-These items are deliberately listed for future implementation; no functionality has been added in this PR.
+These items are planning/design completions only; no functionality has been implemented yet.
