@@ -7,6 +7,7 @@ class SearchIndexer {
     this.intervalMs = options.intervalMs || 5 * 60 * 1000; // default 5 minutes
     this.maxFilesPerRepo = options.maxFilesPerRepo || 200;
     this.maxFileBytes = options.maxFileBytes || 64 * 1024; // 64KB cap per file
+    this.minQueryLength = options.minQueryLength || 2;
     this.index = [];
     this.timer = null;
     this.ready = false;
@@ -15,7 +16,7 @@ class SearchIndexer {
   async start() {
     await this.buildIndex();
     this.timer = setInterval(() => {
-      this.buildIndex().catch((err) => console.error('Search reindex failed:', err));
+      this.buildIndex().catch((err) => console.error('Periodic search index rebuild failed:', err));
     }, this.intervalMs);
   }
 
@@ -43,7 +44,7 @@ class SearchIndexer {
   }
 
   search(query) {
-    if (!query || query.length < 2) return [];
+    if (!query || query.length < this.minQueryLength) return [];
     const term = query.toLowerCase();
     return this.index
       .filter((entry) =>
@@ -97,9 +98,10 @@ class SearchIndexer {
         filesIndexed++;
         texts.push(rel.toLowerCase());
         try {
-          const buf = await fs.readFile(abs);
-          const snippet = buf.slice(0, this.maxFileBytes).toString('utf8');
-          texts.push(snippet.toLowerCase());
+          const snippet = await this._readFileSlice(abs);
+          if (snippet) {
+            texts.push(snippet.toLowerCase());
+          }
         } catch {
           // skip unreadable files
         }
@@ -115,6 +117,17 @@ class SearchIndexer {
       },
       text: texts.join('\n')
     };
+}
+
+  async _readFileSlice(filePath) {
+    const handle = await fs.open(filePath, 'r');
+    try {
+      const buffer = Buffer.alloc(this.maxFileBytes);
+      const { bytesRead } = await handle.read(buffer, 0, this.maxFileBytes, 0);
+      return buffer.slice(0, bytesRead).toString('utf8');
+    } finally {
+      await handle.close();
+    }
   }
 }
 

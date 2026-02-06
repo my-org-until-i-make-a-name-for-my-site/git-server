@@ -19,6 +19,8 @@ router.get('/', authenticateToken, (req, res) => {
 
     const searchTerm = `%${q}%`;
 
+    const DB_QUERIES_WHEN_INDEXER_USED = 2;
+
     // Prefer indexer for repo search
     if (searchIndexer && searchIndexer.ready && (type === 'all' || type === 'repos')) {
         const repoMatches = searchIndexer.search(q);
@@ -36,9 +38,9 @@ router.get('/', authenticateToken, (req, res) => {
 
             const done = () => {
                 completed++;
-                if (completed === 2) {
+                if (completed >= DB_QUERIES_WHEN_INDEXER_USED) {
                     if (hasError) {
-                        return res.status(500).json({ error: 'Search failed', repos: results.repos });
+                        return res.status(500).json({ error: 'Search failed', results });
                     }
                     return res.json(results);
                 }
@@ -78,13 +80,12 @@ router.get('/', authenticateToken, (req, res) => {
         return res.json(results);
     }
 
-    const searchTerm = `%${q}%`;
     const results = { repos: [], orgs: [], users: [] };
     let completed = 0;
     let hasError = false;
     const needed = type === 'all' ? 3 : 1;
     const finish = () => {
-        if (completed === needed) {
+        if (completed >= needed) {
             if (hasError) {
                 return res.status(500).json({ error: 'Search failed', ...results });
             }
@@ -150,5 +151,6 @@ router.get('/', authenticateToken, (req, res) => {
     }
 });
 
+router.setSearchIndexer = setSearchIndexer;
+
 module.exports = router;
-module.exports.setSearchIndexer = setSearchIndexer;

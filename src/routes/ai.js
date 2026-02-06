@@ -203,7 +203,7 @@ async function executeTerminalCommand(command, userId, sessionId) {
         const { stdout, stderr } = await execPromise(command, {
             timeout: 30000, // 30 second timeout
             maxBuffer: 1024 * 1024, // 1MB buffer
-            cwd: path.resolve(process.env.REPOS_BASE_PATH || 'Z:/mnt/repos')
+            cwd: path.resolve(process.env.REPOS_BASE_PATH || (process.platform === 'win32' ? 'Z:/mnt/repos' : '/mnt/repos'))
         });
 
         return {
