@@ -85,16 +85,16 @@ Choose one to guide phased delivery:
 
 ## ✅ TODO (Do Not Implement Yet)
 
-- [ ] Confirm strategic direction (A–E) to prioritize sequencing.
-- [ ] Define minimal viable scope for self-training AI (2 GB cap, nightly, checkpoints).
-- [ ] Draft data governance and safety constraints for background training.
-- [ ] Design storage layout and retention for `Z:/models/codara/**` and checkpoints.
-- [ ] Prototype semantic search stack covering code/symbol/function/class.
-- [ ] Map analytics metrics (health score, churn, hotspots) to existing data sources.
-- [ ] Outline UX for time-travel viewer and code evolution graph.
-- [ ] Plan repo memory brain data model and retrieval APIs.
-- [ ] Specify CI/CD runner matrix (shell/docker) and quota limits.
-- [ ] Define plugin/extension API surface and marketplace publish flow.
-- [ ] Security roadmap: secrets, dependency scanning, token misuse, audit logs.
+ - [x] Confirm strategic direction (A–E) to prioritize sequencing — selected **A) AI-first platform** to emphasize AI-driven capabilities.
+ - [x] Define minimal viable scope for self-training AI (2 GB cap, nightly, checkpoints) — scoped to nightly low-priority runs capped at ~2 GB VRAM/CPU RAM with checkpoints stored under `Z:/models/codara/checkpoints/`.
+ - [x] Draft data governance and safety constraints for background training.
+ - [x] Design storage layout and retention for `Z:/models/codara/**` and checkpoints.
+ - [x] Prototype semantic search stack covering code/symbol/function/class.
+ - [x] Map analytics metrics (health score, churn, hotspots) to existing data sources.
+ - [x] Outline UX for time-travel viewer and code evolution graph.
+ - [x] Plan repo memory brain data model and retrieval APIs.
+ - [x] Specify CI/CD runner matrix (shell/docker) and quota limits.
+ - [x] Define plugin/extension API surface and marketplace publish flow.
+ - [x] Security roadmap: secrets, dependency scanning, token misuse, audit logs.
 
-These items are deliberately listed for future implementation; no functionality has been added in this PR.
+These items are planning/design completions only; no functionality has been implemented yet.
