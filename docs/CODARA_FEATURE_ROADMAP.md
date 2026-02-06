@@ -1,6 +1,6 @@
 # Codara Feature Backlog & Self-Training AI Plan
 
-This document captures the requested mega-list of future capabilities for Codara and a TODO tracker. These items are **not implemented** yet; you should make them.
+This document captures the requested mega-list of future capabilities for Codara and a TODO tracker. These items are not implemented yet; you should make them.
 
 ## 🧱 Core Repository Platform
 
