@@ -47,6 +47,7 @@ const ClusterDiscovery = require('./services/cluster-discovery');
 const ClusterManager = require('./services/cluster-manager');
 const TaskManager = require('./services/task-manager');
 const CollaborationService = require('./services/collaboration');
+const SearchIndexer = require('./services/search-indexer');
 const { CIPipeline, CDPipeline } = require('./services/cicd');
 const JobManager = require('./services/job-manager');
 const WorkflowExecutor = require('./services/workflow-executor');
@@ -101,6 +102,7 @@ let ciPipeline = null;
 let cdPipeline = null;
 let jobManager = null;
 let workflowExecutor = null;
+let searchIndexer = null;
 
 // Start cluster discovery if enabled
 if (config.get('clusters', 'enable_discovery', process.env.ENABLE_CLUSTER_DISCOVERY === 'true')) {
@@ -138,6 +140,18 @@ workflowExecutor = new WorkflowExecutor(taskManager);
 
 // Initialize collaboration service (WebSocket)
 collaborationService = new CollaborationService(server);
+
+// Initialize search indexer (periodic)
+try {
+    const indexIntervalMs = parseInt(process.env.SEARCH_INDEX_INTERVAL_MS, 10);
+    searchIndexer = new SearchIndexer(require('./database'), {
+        intervalMs: Number.isFinite(indexIntervalMs) ? indexIntervalMs : undefined
+    });
+    searchIndexer.start().catch((err) => console.error('Initial search index failed:', err));
+    searchRoutes.setSearchIndexer(searchIndexer);
+} catch (err) {
+    console.error('Search indexer initialization failed:', err);
+}
 
 // Initialize CI/CD pipelines
 // ciPipeline = new CIPipeline(taskManager, collaborationService, clusterManager);
