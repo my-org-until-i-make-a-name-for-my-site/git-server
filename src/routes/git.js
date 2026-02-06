@@ -5,8 +5,8 @@ const fs = require('fs-extra');
 const db = require('../database');
 
 const router = express.Router();
-const DEFAULT_REPO_PATH = process.env.REPOS_BASE_PATH || (process.platform === 'win32' ? 'Z:/mnt/repos' : '/mnt/repos');
-const REPOS_BASE_PATH = path.resolve(DEFAULT_REPO_PATH);
+const REPO_PATH_SETTING = process.env.REPOS_BASE_PATH || (process.platform === 'win32' ? 'Z:/mnt/repos' : '/mnt/repos');
+const REPOS_BASE_PATH = path.resolve(REPO_PATH_SETTING);
 const DIST_PATH = path.join(__dirname, '../../dist');
 
 fs.ensureDirSync(REPOS_BASE_PATH);

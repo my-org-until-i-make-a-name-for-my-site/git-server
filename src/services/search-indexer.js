@@ -32,9 +32,9 @@ class SearchIndexer {
     const newIndex = [];
 
     for (const repo of repos) {
-      const entries = await this._indexRepo(repo);
-      if (entries) {
-        newIndex.push(entries);
+      const entry = await this._indexRepo(repo);
+      if (entry) {
+        newIndex.push(entry);
       }
     }
 

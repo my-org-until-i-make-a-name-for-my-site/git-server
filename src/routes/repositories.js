@@ -7,8 +7,8 @@ const db = require('../database');
 const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
-const DEFAULT_REPO_PATH = process.env.REPOS_BASE_PATH || (process.platform === 'win32' ? 'Z:/mnt/repos' : '/mnt/repos');
-const REPOS_BASE_PATH = path.resolve(DEFAULT_REPO_PATH);
+const REPO_PATH_SETTING = process.env.REPOS_BASE_PATH || (process.platform === 'win32' ? 'Z:/mnt/repos' : '/mnt/repos');
+const REPOS_BASE_PATH = path.resolve(REPO_PATH_SETTING);
 
 // Ensure repos directory exists
 fs.ensureDirSync(REPOS_BASE_PATH);
