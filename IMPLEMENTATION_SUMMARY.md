@@ -1,10 +1,12 @@
-# Codara Platform - Implementation Complete ✅
+# Codara Platform - Implementation Plan (Not Implemented Yet) 🚧
 
 ## Summary
 
-**Codara** is a fully functional, production-ready, self-hosted Git platform built entirely in JavaScript. The platform provides comprehensive features for code hosting, CI/CD, collaboration, and distributed execution.
+**Codara** is a planned self-hosted Git platform built entirely in JavaScript. The capabilities listed here are future work that are not implemented yet; see `docs/CODARA_FEATURE_ROADMAP.md` for the authoritative backlog.
 
-## What Was Built
+> Note: The sections below describe the intended end-state. Checkmarks denote goals, not current functionality.
+
+## What Is Planned
 
 ### Core Platform (100% Complete)
 - ✅ User authentication with JWT (bcrypt/argon2)
