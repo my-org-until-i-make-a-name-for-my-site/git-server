@@ -7,6 +7,7 @@ const db = require('../database');
 const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
+// Default keeps repositories on the expected mounted path; override REPOS_BASE_PATH for other environments.
 const REPO_PATH_SETTING = process.env.REPOS_BASE_PATH || (process.platform === 'win32' ? 'Z:/mnt/repos' : '/mnt/repos');
 const REPOS_BASE_PATH = path.resolve(REPO_PATH_SETTING);
 

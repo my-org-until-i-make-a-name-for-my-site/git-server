@@ -16,7 +16,7 @@ class SearchIndexer {
   async start() {
     await this.buildIndex();
     this.timer = setInterval(() => {
-      this.buildIndex().catch((err) => console.error('Periodic search index rebuild failed:', err));
+      this.buildIndex().catch((err) => console.error('Periodic search index rebuild failed; existing index remains in use:', err));
     }, this.intervalMs);
   }
 

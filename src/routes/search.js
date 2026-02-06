@@ -86,6 +86,7 @@ router.get('/', authenticateToken, (req, res) => {
     let hasError = false;
     const needed = type === 'all' ? EXPECTED_DB_QUERIES_FOR_ALL_TYPES : 1;
     const finish = () => {
+        completed++;
         if (completed >= needed) {
             if (hasError) {
                 return res.status(500).json({ error: 'Search failed', ...results });
@@ -109,7 +110,6 @@ router.get('/', authenticateToken, (req, res) => {
             } else {
                 results.repos = rows || [];
             }
-            completed++;
             finish();
         });
     }
@@ -127,7 +127,6 @@ router.get('/', authenticateToken, (req, res) => {
             } else {
                 results.orgs = rows || [];
             }
-            completed++;
             finish();
         });
     }
@@ -146,7 +145,6 @@ router.get('/', authenticateToken, (req, res) => {
             } else {
                 results.users = rows || [];
             }
-            completed++;
             finish();
         });
     }
